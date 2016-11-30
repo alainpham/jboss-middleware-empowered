@@ -1,0 +1,11 @@
+To install the archtype run  
+
+	mvn install
+
+To use it do 
+
+mvn archetype:generate -DarchetypeGroupId=com.redhat.empowered -DarchetypeArtifactId=fis-spring-archetype -DarchetypeVersion=6.3.0 -DgroupId=<yourGroup> -DartifactId=<yourArtifact>
+
+i.e
+
+mvn archetype:generate -DarchetypeGroupId=com.redhat.empowered -DarchetypeArtifactId=fuse-standard-archetype -DarchetypeVersion=1.0.0.redhat-621117 -DgroupId=com.redhat.tutorials -DartifactId=soapcomp

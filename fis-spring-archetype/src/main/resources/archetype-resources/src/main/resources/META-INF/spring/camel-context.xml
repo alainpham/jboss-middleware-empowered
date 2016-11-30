@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Configures the Camel Context -->
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd        http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+	<bean
+	class="org.apache.camel.spring.spi.BridgePropertyPlaceholderConfigurer" id="props">
+	<property name="ignoreResourceNotFound" value="true"/>
+	<property name="locations">
+	    <list>
+		<value>classpath:app.properties</value>
+		<value>file:app.properties</value>
+		<value>file:${karaf.home}/etc/app.properties</value>
+	    </list>
+	</property>
+	</bean>
+	<camelContext xmlns="http://camel.apache.org/schema/spring">
+		<route >
+			<from uri="timer:foo?period=5000" />
+			<log message="Hello I'm alive.."></log>
+		</route>
+	</camelContext>
+</beans>

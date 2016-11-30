@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Configures the Camel Context -->
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:amq="http://activemq.apache.org/schema/core"
+	xsi:schemaLocation="        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd        http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
+	http://activemq.apache.org/schema/core http://activemq.apache.org/schema/core/activemq-core.xsd">
+	<bean class="org.apache.camel.spring.spi.BridgePropertyPlaceholderConfigurer"
+		id="props">
+		<property name="ignoreResourceNotFound" value="true" />
+		<property name="locations">
+			<list>
+				<value>classpath:app.properties</value>
+				<value>file:app.properties</value>
+				<value>file:${karaf.home}/etc/app.properties</value>
+			</list>
+		</property>
+	</bean>
+
+	<amq:broker useJmx="true" persistent="false">
+		<amq:transportConnectors>
+			<amq:transportConnector uri="tcp://localhost:61616" />
+		</amq:transportConnectors>
+	</amq:broker>
+
+	<bean id="cacheManager" class="org.infinispan.manager.DefaultCacheManager"
+		init-method="start" destroy-method="stop">
+		<constructor-arg type="java.lang.String" value="infinispan.xml" />
+	</bean>
+
+	<bean id="activemq" class="org.apache.activemq.camel.component.ActiveMQComponent">
+		<property name="brokerURL" value="${brokerUrl}" />
+		<property name="userName" value="${brokerUsr}" />
+		<property name="password" value="${brokerPwd}" />
+	</bean>
+
+	<bean id="genericObjectFactory" class="com.redhat.empowered.generic.model.GenericObjectFactory" />
+
+	<bean id="triggerMetricCalculation"
+		class="com.redhat.empowered.generic.processors.TriggerMetricCalculation" />
+
+	<camelContext id="event-collector" xmlns="http://camel.apache.org/schema/spring">
+
+		<endpoint id="datagrid" uri="infinispan://{{dgUrl}}">
+		</endpoint>
+
+		<restConfiguration component="netty4-http" port="7123"
+			bindingMode="json" enableCORS="true" host="localhost" />
+		<rest id="svc" path="/">
+			<get uri="{cacheName}/{uid}" id="queryOp">
+				<to uri="direct:queryOp" />
+			</get>
+		</rest>
+
+		<!-- rest service to query events -->
+		<route id="queryOpRoute">
+			<from id="queryOpStarter" uri="direct:queryOp"></from>
+			<setHeader headerName="CamelInfinispanKey">
+				<simple>${headers.uid}</simple>
+			</setHeader>
+			<setHeader headerName="CamelInfinispanCacheName">
+				<simple>${headers.cacheName}</simple>
+			</setHeader>
+			<setHeader headerName="CamelInfinispanOperation">
+				<constant>CamelInfinispanOperationGet</constant>
+			</setHeader>
+			<to ref="datagrid" />
+			<setBody>
+				<simple>${header.CamelInfinispanOperationResult}</simple>
+			</setBody>
+		</route>
+
+		<!-- store the raw POJO -->
+		<route id="receiveEventAsPojo">
+			<from id="receiveEventAsPojoStarter" uri="activemq:queue:app.stats.storeindicator" />
+			<unmarshal>
+				<serialization />
+			</unmarshal>
+			<log id="logBody" message="trying to store pojo of type ${body.class}" />
+			<setHeader headerName="CamelInfinispanKey">
+				<simple>${body.uid}</simple>
+			</setHeader>
+			<setHeader headerName="CamelInfinispanValue">
+				<simple>${body}</simple>
+			</setHeader>
+			<setHeader headerName="CamelInfinispanCacheName">
+				<constant>event</constant>
+			</setHeader>
+			<setHeader headerName="CamelInfinispanOperation">
+				<constant>CamelInfinispanOperationPut</constant>
+			</setHeader>
+			<to ref="datagrid" />
+		</route>
+
+		<!-- calculating metrics -->
+		<route id="calculateMetrics">
+			<from id="calculateMetricsStarter"
+				uri="activemq:queue:app.stats.updatestats?acknowledgementModeName=CLIENT_ACKNOWLEDGE" />
+			<unmarshal>
+				<serialization />
+			</unmarshal>
+			<log message="trying to process pojo of type ${body.class}"></log>
+			<!-- read existing -->
+			<to uri="direct:getMetricsFromCache"></to>
+			<!-- update metrics data -->
+			<process ref="triggerMetricCalculation"></process>
+			<!-- save data -->
+			<to uri="direct:saveMetricsToCache"></to>
+		</route>
+
+
+		<!-- retrive metric element from the cache -->
+		<!-- expects as input an IndicatorRecord object -->
+		<route id="getMetricsFromCache">
+
+			<from id="getMetricsFromCacheStarter" uri="direct:getMetricsFromCache"></from>
+
+			<setHeader headerName="CamelInfinispanCacheName">
+				<constant>metric</constant>
+			</setHeader>
+			<setHeader headerName="eventTimestmp">
+				<simple>${body.timestmp}</simple>
+			</setHeader>
+			<setHeader headerName="CamelInfinispanOperation">
+				<constant>CamelInfinispanOperationGet</constant>
+			</setHeader>
+			<!-- key is composed as follows : className.granularity.timestamp -->
+
+			<!-- hourly data -->
+			<setHeader headerName="CamelInfinispanKey">
+				<simple>${body.class.name}.hourly.${date:header.eventTimestmp:yyyyMMddHH}</simple>
+			</setHeader>
+			<to ref="datagrid" />
+			<choice>
+				<when>
+					<simple>${header.CamelInfinispanOperationResult} == null</simple>
+					<setHeader headerName="hourly">
+						<method bean="genericObjectFactory"
+							method="createStatisticsRecord(${header.CamelInfinispanKey})"></method>
+					</setHeader>
+				</when>
+				<otherwise>
+					<setHeader headerName="hourly">
+						<simple>${header.CamelInfinispanOperationResult}</simple>
+					</setHeader>
+				</otherwise>
+			</choice>
+
+
+
+			<!-- daily data -->
+			<setHeader headerName="CamelInfinispanKey">
+				<simple>${body.class.name}.daily.${date:header.eventTimestmp:yyyyMMdd}</simple>
+			</setHeader>
+			<to ref="datagrid" />
+			<choice>
+				<when>
+					<simple>${header.CamelInfinispanOperationResult} == null</simple>
+					<setHeader headerName="daily">
+						<method bean="genericObjectFactory"
+							method="createStatisticsRecord(${header.CamelInfinispanKey})"></method>
+					</setHeader>
+				</when>
+				<otherwise>
+					<setHeader headerName="daily">
+						<simple>${header.CamelInfinispanOperationResult}</simple>
+					</setHeader>
+				</otherwise>
+			</choice>
+
+			<!-- monthly data -->
+			<setHeader headerName="CamelInfinispanKey">
+				<simple>${body.class.name}.monthly.${date:header.eventTimestmp:yyyyMM}</simple>
+			</setHeader>
+			<to ref="datagrid" />
+			<choice>
+				<when>
+					<simple>${header.CamelInfinispanOperationResult} == null</simple>
+					<setHeader headerName="monthly">
+						<method bean="genericObjectFactory"
+							method="createStatisticsRecord(${header.CamelInfinispanKey})"></method>
+					</setHeader>
+				</when>
+				<otherwise>
+					<setHeader headerName="monthly">
+						<simple>${header.CamelInfinispanOperationResult}</simple>
+					</setHeader>
+				</otherwise>
+			</choice>
+		</route>
+
+
+		<!-- save metric element from the cache -->
+		<!-- expects as input an IndicatorRecord object -->
+		<route id="saveMetricsToCache">
+
+			<from id="saveMetricsToCacheStarter" uri="direct:saveMetricsToCache"></from>
+
+			<setHeader headerName="CamelInfinispanCacheName">
+				<constant>metric</constant>
+			</setHeader>
+			<setHeader headerName="CamelInfinispanOperation">
+				<constant>CamelInfinispanOperationPut</constant>
+			</setHeader>
+			<!-- key is composed as follows : className.granularity.timestamp -->
+
+			<!-- hourly data -->
+			<setHeader headerName="CamelInfinispanKey">
+				<simple>${header.hourly.key}</simple>
+			</setHeader>
+			<setHeader headerName="CamelInfinispanValue">
+				<simple>${header.hourly}</simple>
+			</setHeader>
+			<to ref="datagrid" />
+
+
+			<!-- daily data -->
+			<setHeader headerName="CamelInfinispanKey">
+				<simple>${header.daily.key}</simple>
+			</setHeader>
+			<setHeader headerName="CamelInfinispanValue">
+				<simple>${header.daily}</simple>
+			</setHeader>
+			<to ref="datagrid" />
+
+
+			<!-- monthly data -->
+			<setHeader headerName="CamelInfinispanKey">
+				<simple>${header.monthly.key}</simple>
+			</setHeader>
+			<setHeader headerName="CamelInfinispanValue">
+				<simple>${header.monthly}</simple>
+			</setHeader>
+			<to ref="datagrid" />
+
+		</route>
+
+
+	</camelContext>
+</beans>
