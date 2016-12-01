@@ -13,7 +13,7 @@
 	   return String(10000*yyyy + 100*mm + dd); // Leading zeros for mm and dd
 	}
     function TradeService($http) {
-        var vdbURL = "http://localhost:7123/metric/com.redhat.empowered.specific.model.trading.TradeProcessingDuration.daily." + yyyymmdd(new Date());
+        var vdbURL = "api/metric/com.redhat.empowered.specific.model.trading.TradeProcessingDuration.daily." + yyyymmdd(new Date());
         $http.defaults.headers.common.Accept = 'application/json';
 
         var service = {};

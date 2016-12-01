@@ -27,7 +27,7 @@
 	<camelContext id="trade-service" xmlns="http://camel.apache.org/schema/spring">
 
 		<restConfiguration component="netty4-http" port="7124"
-			bindingMode="json" enableCORS="true" host="localhost" />
+			bindingMode="json" enableCORS="true" />
 		<rest id="svc" path="/sim">
 			<get uri="{avg}/{stdev}" id="simOp">
 				<to uri="direct:simOp" />

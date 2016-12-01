@@ -18,7 +18,7 @@
 
 	<amq:broker useJmx="true" persistent="false">
 		<amq:transportConnectors>
-			<amq:transportConnector uri="tcp://localhost:61616" />
+			<amq:transportConnector uri="tcp://0.0.0.0:61616" />
 		</amq:transportConnectors>
 	</amq:broker>
 
@@ -44,7 +44,7 @@
 		</endpoint>
 
 		<restConfiguration component="netty4-http" port="7123"
-			bindingMode="json" enableCORS="true" host="localhost" />
+			bindingMode="json" enableCORS="true" />
 		<rest id="svc" path="/">
 			<get uri="{cacheName}/{uid}" id="queryOp">
 				<to uri="direct:queryOp" />
