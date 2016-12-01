@@ -17,7 +17,7 @@ parameters:
   name: IMAGE_STREAM_NAMESPACE
   value: openshift
   required: true
-- description: FIS image stream namespace
+- description: Maven build command
   name: MAVEN_ARGS
   value: install -DskipTests -e
   required: true
@@ -69,6 +69,116 @@ objects:
     - type: ConfigChange
   status: {}
   
+- apiVersion: v1 #deploy for event-collector
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    labels:
+      app: event-collector
+      solution: sla-solution
+    name: event-collector
+  spec:
+    replicas: 1
+    selector:
+      deploymentconfig: event-collector
+    strategy:
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: event-collector
+          solution: sla-solution
+          deploymentconfig: event-collector
+      spec:
+        containers:
+          image: event-collector
+          imagePullPolicy: Always
+          name: event-collector
+          ports:
+          - containerPort: 8778
+            name: jolokia
+            protocol: TCP
+          - containerPort: 7123
+            name: rest-svc
+            protocol: TCP
+          - containerPort: 61616
+            name: amq-svc
+            protocol: TCP
+          resources: {}
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - event-collector
+        from:
+          kind: ImageStreamTag
+          name: event-collector:latest
+      type: ImageChange
+    - type: ConfigChange
+  status: {}
+  
+- apiVersion: v1 #ImageStream for event-collector
+  kind: ImageStream
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    labels:
+      app: event-collector
+      solution: sla-solution
+    name: event-collector
+  spec:
+    tags:
+    - annotations: null
+      from:
+        kind: DockerImage
+        name: event-collector:latest
+      generation: null
+      importPolicy: {}
+      name: latest
+  status: {}
+  
+- apiVersion: v1 #Service for event-collector
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    labels:
+      app: event-collector
+      solution: sla-solution
+    name: event-collector
+  spec:
+    ports:
+    - name: jolokia-tcp
+      port: 8778
+      protocol: TCP
+      targetPort: 8778
+    - name: rest-svc-tcp
+      port: 7123
+      protocol: TCP
+      targetPort: 7123
+    - name: amq-svc-tcp
+      port: 61616
+      protocol: TCP
+      targetPort: 61616
+    selector:
+      deploymentconfig: event-collector
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+    
 - apiVersion: v1 #Build for trade-service
   kind: BuildConfig
   metadata:
@@ -155,64 +265,6 @@ objects:
       type: Source
     triggers:
     - imageChange: {}
-      type: ImageChange
-    - type: ConfigChange
-  status: {}
-  
-- apiVersion: v1 #deploy for event-collector
-  kind: DeploymentConfig
-  metadata:
-    annotations:
-      openshift.io/generated-by: OpenShiftWebConsole
-    creationTimestamp: null
-    labels:
-      app: event-collector
-      solution: sla-solution
-    name: event-collector
-  spec:
-    replicas: 1
-    selector:
-      deploymentconfig: event-collector
-    strategy:
-      resources: {}
-      rollingParams:
-        intervalSeconds: 1
-        maxSurge: 25%
-        maxUnavailable: 25%
-        timeoutSeconds: 600
-        updatePeriodSeconds: 1
-      type: Rolling
-    template:
-      metadata:
-        creationTimestamp: null
-        labels:
-          app: event-collector
-          solution: sla-solution
-          deploymentconfig: event-collector
-      spec:
-        containers:
-          image: event-collector
-          imagePullPolicy: Always
-          name: event-collector
-          ports:
-          - containerPort: 8778
-            name: jolokia
-            protocol: TCP
-          - containerPort: 7123
-            name: rest-svc
-            protocol: TCP
-          - containerPort: 61616
-            name: amq-svc
-            protocol: TCP
-          resources: {}
-    triggers:
-    - imageChangeParams:
-        automatic: true
-        containerNames:
-        - event-collector
-        from:
-          kind: ImageStreamTag
-          name: event-collector:latest
       type: ImageChange
     - type: ConfigChange
   status: {}
@@ -326,28 +378,7 @@ objects:
       type: ImageChange
     - type: ConfigChange
   status: {}
-  
-- apiVersion: v1 #ImageStream for event-collector
-  kind: ImageStream
-  metadata:
-    annotations:
-      openshift.io/generated-by: OpenShiftWebConsole
-    creationTimestamp: null
-    labels:
-      app: event-collector
-      solution: sla-solution
-    name: event-collector
-  spec:
-    tags:
-    - annotations: null
-      from:
-        kind: DockerImage
-        name: event-collector:latest
-      generation: null
-      importPolicy: {}
-      name: latest
-  status: {}
-  
+    
 - apiVersion: v1 #ImageStream for trade-service
   kind: ImageStream
   metadata:
@@ -389,38 +420,7 @@ objects:
       importPolicy: {}
       name: latest
   status: {}
-  
-- apiVersion: v1 #Service for event-collector
-  kind: Service
-  metadata:
-    annotations:
-      openshift.io/generated-by: OpenShiftWebConsole
-    creationTimestamp: null
-    labels:
-      app: event-collector
-      solution: sla-solution
-    name: event-collector
-  spec:
-    ports:
-    - name: jolokia-tcp
-      port: 8778
-      protocol: TCP
-      targetPort: 8778
-    - name: rest-svc-tcp
-      port: 7123
-      protocol: TCP
-      targetPort: 7123
-    - name: amq-svc-tcp
-      port: 61616
-      protocol: TCP
-      targetPort: 61616
-    selector:
-      deploymentconfig: event-collector
-    sessionAffinity: None
-    type: ClusterIP
-  status:
-    loadBalancer: {}
-    
+      
 - apiVersion: v1 #Service for trade-service
   kind: Service
   metadata:
