@@ -132,7 +132,7 @@
 		<dependency>
 			<groupId>com.redhat.empowered</groupId>
 			<artifactId>trade-model</artifactId>
-			<version>1.0.0</version>
+			<version>${project.version}</version>
 		</dependency>
 
 	</dependencies>
