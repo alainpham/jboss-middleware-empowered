@@ -15,11 +15,15 @@ parameters:
   required: true
 - description: FIS image stream namespace
   name: IMAGE_STREAM_NAMESPACE
-  value: openshift
-  required: true
+  value: 
+  required: false
+- description: Maven build command
+  name: MAVEN_MIRROR_URL
+  value: http://aphamf24:8081/repository/maven-public/
+  required: false
 - description: Maven build command
   name: MAVEN_ARGS
-  value: install -DskipTests -e
+  value: -DMVN_MIRROR=${} -s settings.xml install -DskipTests -e
   required: true
 objects:
 - apiVersion: v1 #Build for event-collector
@@ -56,8 +60,6 @@ objects:
           value: 
         - name: ARTIFACT_DIR
           value: event-collector/target/
-        - name: MODULE_DIR
-          value: event-collector
         from:
           kind: ImageStreamTag
           name: fis-java-openshift:latest
@@ -85,13 +87,6 @@ objects:
       deploymentconfig: event-collector
     strategy:
       resources: {}
-      rollingParams:
-        intervalSeconds: 1
-        maxSurge: 25%
-        maxUnavailable: 25%
-        timeoutSeconds: 600
-        updatePeriodSeconds: 1
-      type: Rolling
     template:
       metadata:
         creationTimestamp: null
@@ -101,30 +96,30 @@ objects:
           deploymentconfig: event-collector
       spec:
         containers:
-          image: event-collector
-          imagePullPolicy: Always
-          name: event-collector
-          ports:
-          - containerPort: 8778
-            name: jolokia
-            protocol: TCP
-          - containerPort: 7123
-            name: rest-svc
-            protocol: TCP
-          - containerPort: 61616
-            name: amq-svc
-            protocol: TCP
-          resources: {}
+        -  name: event-collector
+           image: event-collector
+           imagePullPolicy: Always  
+           ports:
+           - containerPort: 8778
+             name: jolokia
+             protocol: TCP
+           - containerPort: 7123
+             name: rest-svc
+             protocol: TCP
+           - containerPort: 61616
+             name: amq-svc
+             protocol: TCP
+           resources: {}
     triggers:
-    - imageChangeParams:
+    - type: ConfigChange
+    - type: ImageChange
+      imageChangeParams:
         automatic: true
         containerNames:
-        - event-collector
+        - "event-collector"
         from:
           kind: ImageStreamTag
           name: event-collector:latest
-      type: ImageChange
-    - type: ConfigChange
   status: {}
   
 - apiVersion: v1 #ImageStream for event-collector
