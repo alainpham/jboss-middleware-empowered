@@ -19,7 +19,7 @@ parameters:
   required: false
 - description: Maven build command
   name: MAVEN_ARGS
-  value: install -DskipTests -e
+  value: -DMVN_MIRROR=http://aphamf24:8081/repository/maven-public/ -s settings.xml install -DskipTests -e
   required: true
 objects:
 - apiVersion: v1 #Build for event-collector
@@ -48,8 +48,6 @@ objects:
     strategy:
       sourceStrategy:
         env:
-        - name: MAVEN_MIRROR_URL
-          value: http://aphamf24:8081/repository/maven-public/
         - name: MAVEN_ARGS
           value: ${MAVEN_ARGS}
         - name: MAVEN_OPTS
@@ -140,3 +138,35 @@ objects:
       importPolicy: {}
       name: latest
   status: {}
+  
+- apiVersion: v1 #Service for event-collector
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    labels:
+      app: event-collector
+      solution: sla-solution
+    name: event-collector
+  spec:
+    ports:
+    - name: jolokia-tcp
+      port: 8778
+      protocol: TCP
+      targetPort: 8778
+    - name: rest-svc-tcp
+      port: 7123
+      protocol: TCP
+      targetPort: 7123
+    - name: amq-svc-tcp
+      port: 61616
+      protocol: TCP
+      targetPort: 61616
+    selector:
+      deploymentconfig: event-collector
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+    

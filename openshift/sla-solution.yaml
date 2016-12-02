@@ -18,15 +18,11 @@ parameters:
   value: 
   required: false
 - description: Maven build command
-  name: MAVEN_MIRROR_URL
-  value: http://aphamf24:8081/repository/maven-public/
-  required: false
-- description: Maven build command
   name: MAVEN_ARGS
-  value: -DMVN_MIRROR=${} -s settings.xml install -DskipTests -e
+  value: -DMVN_MIRROR=http://172.17.0.1:8081/nexus/content/groups/public/ -gs settings.xml install -DskipTests -e
   required: true
 objects:
-- apiVersion: v1 #Build for event-collector
+- apiVersion: v1 ############Build for event-collector###################
   kind: BuildConfig
   metadata:
     annotations:
@@ -174,7 +170,7 @@ objects:
   status:
     loadBalancer: {}
     
-- apiVersion: v1 #Build for trade-service
+- apiVersion: v1 ############Build for trade-service###################
   kind: BuildConfig
   metadata:
     annotations:
@@ -200,59 +196,14 @@ objects:
     strategy:
       sourceStrategy:
         env:
+        - name: MAVEN_ARGS
+          value: ${MAVEN_ARGS}
         - name: MAVEN_OPTS
           value: -Xmx1024m
         - name: MAVEN_ARGS_APPEND
-          value: -pl trade-service --also-make
+          value: 
         - name: ARTIFACT_DIR
           value: trade-service/target/
-        - name: MODULE_DIR
-          value: trade-service
-        from:
-          kind: ImageStreamTag
-          name: fis-java-openshift:latest
-          namespace: ${IMAGE_STREAM_NAMESPACE}
-      type: Source
-    triggers:
-    - imageChange: {}
-      type: ImageChange
-    - type: ConfigChange
-  status: {}
-  
-- apiVersion: v1 #Build for dashboard
-  kind: BuildConfig
-  metadata:
-    annotations:
-      openshift.io/generated-by: OpenShiftWebConsole
-    creationTimestamp: null
-    labels:
-      app: dashboard
-      solution: sla-solution
-    name: dashboard
-  spec:
-    output:
-      to:
-        kind: ImageStreamTag
-        name: dashboard:latest
-    postCommit: {}
-    resources: {}
-    runPolicy: Serial
-    source:
-      git:
-        ref: ${SOURCE_REF}
-        uri: ${SOURCE_REPOSITORY}
-      type: Git
-    strategy:
-      sourceStrategy:
-        env:
-        - name: MAVEN_OPTS
-          value: -Xmx1024m
-        - name: MAVEN_ARGS_APPEND
-          value: -pl dashboard --also-make
-        - name: ARTIFACT_DIR
-          value: dashboard/target/
-        - name: MODULE_DIR
-          value: dashboard
         from:
           kind: ImageStreamTag
           name: fis-java-openshift:latest
@@ -280,13 +231,6 @@ objects:
       deploymentconfig: trade-service
     strategy:
       resources: {}
-      rollingParams:
-        intervalSeconds: 1
-        maxSurge: 25%
-        maxUnavailable: 25%
-        timeoutSeconds: 600
-        updatePeriodSeconds: 1
-      type: Rolling
     template:
       metadata:
         creationTimestamp: null
@@ -296,84 +240,29 @@ objects:
           deploymentconfig: trade-service
       spec:
         containers:
-          image: trade-service
-          imagePullPolicy: Always
-          name: trade-service
-          ports:
-          - containerPort: 8778
-            name: jolokia
-            protocol: TCP
-          - containerPort: 7124
-            name: rest-svc
-            protocol: TCP
-          resources: {}
+        -  name: trade-service
+           image: trade-service
+           imagePullPolicy: Always  
+           ports:
+           - containerPort: 8778
+             name: jolokia
+             protocol: TCP
+           - containerPort: 7124
+             name: rest-svc
+             protocol: TCP
+           resources: {}
     triggers:
-    - imageChangeParams:
+    - type: ConfigChange
+    - type: ImageChange
+      imageChangeParams:
         automatic: true
         containerNames:
-        - trade-service
+        - "trade-service"
         from:
           kind: ImageStreamTag
           name: trade-service:latest
-      type: ImageChange
-    - type: ConfigChange
   status: {}
   
-- apiVersion: v1 #deploy for dashboard
-  kind: DeploymentConfig
-  metadata:
-    annotations:
-      openshift.io/generated-by: OpenShiftWebConsole
-    creationTimestamp: null
-    labels:
-      app: dashboard
-      solution: sla-solution
-    name: dashboard
-  spec:
-    replicas: 1
-    selector:
-      deploymentconfig: dashboard
-    strategy:
-      resources: {}
-      rollingParams:
-        intervalSeconds: 1
-        maxSurge: 25%
-        maxUnavailable: 25%
-        timeoutSeconds: 600
-        updatePeriodSeconds: 1
-      type: Rolling
-    template:
-      metadata:
-        creationTimestamp: null
-        labels:
-          app: dashboard
-          solution: sla-solution
-          deploymentconfig: dashboard
-      spec:
-        containers:
-          image: dashboard
-          imagePullPolicy: Always
-          name: dashboard
-          ports:
-          - containerPort: 8778
-            name: jolokia
-            protocol: TCP
-          - containerPort: 8888
-            name: http
-            protocol: TCP
-          resources: {}
-    triggers:
-    - imageChangeParams:
-        automatic: true
-        containerNames:
-        - trade-service
-        from:
-          kind: ImageStreamTag
-          name: dashboard:latest
-      type: ImageChange
-    - type: ConfigChange
-  status: {}
-    
 - apiVersion: v1 #ImageStream for trade-service
   kind: ImageStream
   metadata:
@@ -395,27 +284,6 @@ objects:
       name: latest
   status: {}
   
-- apiVersion: v1 #ImageStream for dashboard
-  kind: ImageStream
-  metadata:
-    annotations:
-      openshift.io/generated-by: OpenShiftWebConsole
-    creationTimestamp: null
-    labels:
-      app: dashboard
-      solution: sla-solution
-    name: dashboard
-  spec:
-    tags:
-    - annotations: null
-      from:
-        kind: DockerImage
-        name: dashboard:latest
-      generation: null
-      importPolicy: {}
-      name: latest
-  status: {}
-      
 - apiVersion: v1 #Service for trade-service
   kind: Service
   metadata:
@@ -443,6 +311,120 @@ objects:
   status:
     loadBalancer: {}
     
+- apiVersion: v1 ############Build for dashboard###################
+  kind: BuildConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    labels:
+      app: dashboard
+      solution: sla-solution
+    name: dashboard
+  spec:
+    output:
+      to:
+        kind: ImageStreamTag
+        name: dashboard:latest
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      git:
+        ref: ${SOURCE_REF}
+        uri: ${SOURCE_REPOSITORY}
+      type: Git
+    strategy:
+      sourceStrategy:
+        env:
+        - name: MAVEN_ARGS
+          value: ${MAVEN_ARGS}
+        - name: MAVEN_OPTS
+          value: -Xmx1024m
+        - name: MAVEN_ARGS_APPEND
+          value: 
+        - name: ARTIFACT_DIR
+          value: dashboard/target/
+        from:
+          kind: ImageStreamTag
+          name: fis-java-openshift:latest
+          namespace: ${IMAGE_STREAM_NAMESPACE}
+      type: Source
+    triggers:
+    - imageChange: {}
+      type: ImageChange
+    - type: ConfigChange
+  status: {}
+  
+- apiVersion: v1 #deploy for dashboard
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    labels:
+      app: dashboard
+      solution: sla-solution
+    name: dashboard
+  spec:
+    replicas: 1
+    selector:
+      deploymentconfig: dashboard
+    strategy:
+      resources: {}
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: dashboard
+          solution: sla-solution
+          deploymentconfig: dashboard
+      spec:
+        containers:
+        -  name: dashboard
+           image: dashboard
+           imagePullPolicy: Always  
+           ports:
+           - containerPort: 8778
+             name: jolokia
+             protocol: TCP
+           - containerPort: 8888
+             name: http
+             protocol: TCP
+           resources: {}
+    triggers:
+    - type: ConfigChange
+    - type: ImageChange
+      imageChangeParams:
+        automatic: true
+        containerNames:
+        - "dashboard"
+        from:
+          kind: ImageStreamTag
+          name: dashboard:latest
+  status: {}
+  
+- apiVersion: v1 #ImageStream for dashboard
+  kind: ImageStream
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    labels:
+      app: dashboard
+      solution: sla-solution
+    name: dashboard
+  spec:
+    tags:
+    - annotations: null
+      from:
+        kind: DockerImage
+        name: dashboard:latest
+      generation: null
+      importPolicy: {}
+      name: latest
+  status: {}
+  
 - apiVersion: v1 #Service for dashboard
   kind: Service
   metadata:
