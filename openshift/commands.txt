@@ -1,0 +1,10 @@
+oc create -f fis-image-streams.json
+oc create configmap --from-file=app.properties sla-solution-config
+oc create -f sla-solution.yaml
+oc replace -f sla-solution.yaml
+oc delete all -l solution=sla-solution
+
+
+
+
+docker images | grep 172.30.227.103 | awk '{print "docker rmi " $3 }'
