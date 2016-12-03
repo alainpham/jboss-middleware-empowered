@@ -94,7 +94,10 @@ objects:
         containers:
         -  name: event-collector
            image: event-collector
-           imagePullPolicy: Always  
+           imagePullPolicy: Always
+           volumeMounts:
+           - name: config-volume
+             mountPath: /deployments/etc
            ports:
            - containerPort: 8778
              name: jolokia
@@ -106,6 +109,10 @@ objects:
              name: amq-svc
              protocol: TCP
            resources: {}
+        volumes:
+        - name: config-volume
+          configMap:
+            name: sla-solution-config
     triggers:
     - type: ConfigChange
     - type: ImageChange
@@ -242,7 +249,10 @@ objects:
         containers:
         -  name: trade-service
            image: trade-service
-           imagePullPolicy: Always  
+           imagePullPolicy: Always
+           volumeMounts:
+           - name: config-volume
+             mountPath: /deployments/etc
            ports:
            - containerPort: 8778
              name: jolokia
@@ -251,6 +261,10 @@ objects:
              name: rest-svc
              protocol: TCP
            resources: {}
+        volumes:
+        - name: config-volume
+          configMap:
+            name: sla-solution-config
     triggers:
     - type: ConfigChange
     - type: ImageChange
@@ -383,7 +397,10 @@ objects:
         containers:
         -  name: dashboard
            image: dashboard
-           imagePullPolicy: Always  
+           imagePullPolicy: Always
+           volumeMounts:
+           - name: config-volume
+             mountPath: /deployments/etc 
            ports:
            - containerPort: 8778
              name: jolokia
@@ -392,6 +409,10 @@ objects:
              name: http
              protocol: TCP
            resources: {}
+        volumes:
+        - name: config-volume
+          configMap:
+            name: sla-solution-config
     triggers:
     - type: ConfigChange
     - type: ImageChange

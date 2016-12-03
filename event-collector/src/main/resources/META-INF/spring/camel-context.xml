@@ -12,6 +12,7 @@
 				<value>classpath:app.properties</value>
 				<value>file:app.properties</value>
 				<value>file:${karaf.home}/etc/app.properties</value>
+				<value>file:etc/app.properties</value>
 			</list>
 		</property>
 	</bean>

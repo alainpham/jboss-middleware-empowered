@@ -10,6 +10,7 @@
                 <value>classpath:dashapp.properties</value>
                 <value>file:dashapp.properties</value>
                 <value>file:${karaf.home}/etc/dashapp.properties</value>
+                <value>file:etc/dashapp.properties</value>
             </list>
         </property>
     </bean>
