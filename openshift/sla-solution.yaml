@@ -19,11 +19,11 @@ parameters:
   required: false
 - description: FIS version
   name: FIS_VERSION
-  value: 1.0
+  value: "1.0"
   required: true
 - description: Solution version
   name: SOLUTION_VERSION
-  value: 1.0.0-SNAPSHOT
+  value: "1.0.0-SNAPSHOT"
   required: true
 - description: Maven build command
   name: MAVEN_ARGS
