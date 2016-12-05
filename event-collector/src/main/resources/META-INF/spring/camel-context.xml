@@ -44,7 +44,7 @@
 		<endpoint id="datagrid" uri="infinispan://{{dgUrl}}">
 		</endpoint>
 
-		<restConfiguration component="netty4-http" port="7123" hostNameResolver="localIp"
+		<restConfiguration component="netty4-http" port="7123"
 			bindingMode="json" enableCORS="true" />
 		<rest id="svc" path="/">
 			<get uri="{cacheName}/{uid}" id="queryOp">
