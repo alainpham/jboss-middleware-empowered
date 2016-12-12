@@ -73,7 +73,8 @@ angular.module('patternfly', [
   'patternfly.toolbars',
   'patternfly.utils',
   'patternfly.validation',
-  'patternfly.views'
+  'patternfly.views',
+  'patternfly.wizard'
 ]);
 
 ;/**
@@ -105,7 +106,19 @@ angular.module( 'patternfly.utils', ['ui.bootstrap'] );
  *   Views module for patternfly.
  *
  */
-angular.module('patternfly.views', ['patternfly.utils', 'patternfly.filters', 'patternfly.sort']);
+angular.module('patternfly.views', ['patternfly.utils', 'patternfly.filters', 'patternfly.sort', 'patternfly.charts']);
+;/**
+ * @name  PatternFly Wizard
+ *
+ * @description
+ *   Wizard module.
+ *
+ */
+angular.module('patternfly.wizard', ['ui.bootstrap.modal',
+  'ui.bootstrap.tpls',
+  'patternfly.form']);
+
+
 ;/**
  * @ngdoc directive
  * @name patternfly.autofocus:pfFocused
@@ -3323,6 +3336,63 @@ angular.module('patternfly.form').directive('pfDatepicker', function () {
 });
 ;/**
  * @ngdoc directive
+ * @name patternfly.form.directive:pfDateTimepicker
+ *
+ * @description
+ *  Angular directive to wrap the bootstrap datetimepicker http://eonasdan.github.io/bootstrap-datetimepicker/
+ *
+ * @param {object} date date and time moment object
+ * @param {string} options the configuration options for the date picker
+ *
+ * @example
+ <example module="patternfly.form">
+   <file name="index.html">
+     <form class="form" ng-controller="FormDemoCtrl">
+       <span>Date and Time: <span ng-bind="date"></span></span>
+       <div pf-date-timepicker options="options" date="date"></div>
+     </form>
+   </file>
+
+   <file name="script.js">
+     angular.module( 'patternfly.form' ).controller( 'FormDemoCtrl', function( $scope ) {
+       $scope.options = {
+         format: 'HH:mm'
+       };
+       $scope.date = moment();
+     });
+   </file>
+ </example>
+ */
+angular.module('patternfly.form').directive('pfDateTimepicker', function () {
+  'use strict';
+
+  return {
+    replace: true,
+    restrict: 'A',
+    require: '^form',
+    templateUrl: 'form/datetimepicker/datetimepicker.html',
+    scope: {
+      options: '=',
+      date: '='
+    },
+    link: function ($scope, element) {
+      //Make sure the date picker is set with the correct options
+      element.datetimepicker($scope.options);
+
+      //Set the initial value of the date picker
+      element.datetimepicker('date', $scope.date || null);
+
+      //Change happened on the date picker side. Update the underlying date model
+      element.on('dp.change', function (elem) {
+        $scope.$apply(function () {
+          $scope.date = elem.date;
+        });
+      });
+    }
+  };
+});
+;/**
+ * @ngdoc directive
  * @name patternfly.form.directive:pfFormButtons
  *
  * @description
@@ -3781,24 +3851,24 @@ angular.module('patternfly.modals')
     },
     templateUrl: 'modals/about-modal.html',
     transclude: true,
-    controller: ['$scope', '$modal', '$transclude', function ($scope, $modal, $transclude) {
+    controller: ['$scope', '$uibModal', '$transclude', function ($scope, $uibModal, $transclude) {
       if ($scope.isOpen === undefined) {
         $scope.isOpen = false;
       }
 
       // The ui-bootstrap modal only supports either template or templateUrl as a way to specify the content.
-      // When the content is retrieved, it is compiled and linked against the provided scope by the $modal service.
+      // When the content is retrieved, it is compiled and linked against the provided scope by the $uibModal service.
       // Unfortunately, there is no way to provide transclusion there.
       //
       // The solution below embeds a placeholder directive (i.e., pfAboutModalTransclude) to append the transcluded DOM.
       // The transcluded DOM is from a different location than the modal, so it needs to be handed over to the
       // placeholder directive. Thus, we're passing the actual DOM, not the parsed HTML.
       $scope.openModal = function () {
-        $modal.open({
-          controller: ['$scope', '$modalInstance', 'content', function ($scope, $modalInstance, content) {
+        $uibModal.open({
+          controller: ['$scope', '$uibModalInstance', 'content', function ($scope, $uibModalInstance, content) {
             $scope.template = content;
             $scope.close = function () {
-              $modalInstance.close();
+              $uibModalInstance.close();
             };
             $scope.$watch(
               function () {
@@ -3806,7 +3876,7 @@ angular.module('patternfly.modals')
               },
               function (newValue) {
                 if (newValue === false) {
-                  $modalInstance.close();
+                  $uibModalInstance.close();
                 }
               }
             );
@@ -3846,7 +3916,7 @@ angular.module('patternfly.modals')
 });
 ;/**
  * @ngdoc directive
- * @name patternfly.navigation.directive:pfVerticalNavigation
+ * @name patternfly.navigation.directive:pfVerticalNavigation - Basic
  *
  * @description
  *   Directive for vertical navigation. This sets up the nav bar header with the collapse button (hamburger) and the
@@ -4411,9 +4481,175 @@ angular.module('patternfly.modals')
   </file>
 </example>
 */
- angular.module('patternfly.navigation').directive('pfVerticalNavigation', ['$location', '$rootScope', '$window', '$document', '$timeout',
-  function (location, rootScope, $window, $document, $timeout) {
+;/**
+ * @ngdoc directive
+ * @name patternfly.navigation.directive:pfVerticalNavigation - Router
+ *
+ * @description
+ *   This example shows how to use pfVerticalNavigation with angular-ui-router's $states and uiSrefs.
+ *
+ * @param {string} brandSrc src for brand image
+ * @param {string} brandAlt  Text for product name when brand image is not available
+ * @param {boolean} showBadges Flag if badges are used on navigation items, default: false
+ * @param {boolean} persistentSecondary Flag to use persistent secondary menus, default: false
+ * @param {boolean} hiddenIcons Flag to not show icons on the primary menu, default: false
+ * @param {array} items List of navigation items
+ * <ul style='list-style-type: none'>
+ * <li>.title          - (string) Name of item to be displayed on the menu
+ * <li>.iconClass      - (string) Classes for icon to be shown on the menu (ex. "fa fa-dashboard")
+ * <li>.href           - (string) href link to navigate to on click
+ * <li>.children       - (array) Submenu items (same structure as top level items)
+ * <li>.badges         -  (array) Badges to display for the item, badges with a zero count are not displayed.
+ *   <ul style='list-style-type: none'>
+ *   <li>.count        - (number) Count to display in the badge
+ *   <li>.iconClass    - (string) Class to use for showing an icon before the count
+ *   <li>.tooltip      - (string) Tooltip to display for the badge
+ *   <li>.badgeClass:  - (string) Additional class(es) to add to the badge container
+ *   </ul>
+ * </ul>
+ * @param {function} navigateCallback function(item) Callback method invoked on a navigation item click (one with no submenus)
+ * @param {function} itemClickCallback function(item) Callback method invoked on an item click
+ * @param {boolean} updateActiveItemsOnClick Flag if active items should be marked on click rather than on navigation change, default: false
+ * @param {boolean} ignoreMobile Flag if mobile state should be ignored (use only if absolutely necessary) default: false
+ *
+ * @example
+ <example module="myApp" deps="patternfly.utils, patternfly.filters, patternfly.sort, patternfly.views">
+  <file name="index.html">
+    <div>
+      <button class="btn btn-primary" id="showVerticalNavWithRouter" onclick="showVerticalNavWithRouter">Show Vertical Navigation with UIRouter</button>
+      <label class="example-info-text">This will display the vertical nav bar and some mock content over the content of this page.</label>
+      <label class="example-info-text">Exit the demo to return back to this page.</label>
+    </div>
+    <div id="verticalNavWithRouterLayout" class="layout-pf layout-pf-fixed faux-layout hidden" ng-controller="vertNavWithRouterController">
+      <div pf-vertical-navigation items="navigationItems" brand-alt="ANGULAR PATTERNFLY"
+          show-badges="true" pinnable-menus="true" update-active-items-on-click="true"
+          navigate-callback="handleNavigateClickRouter">
+        <div>
+          <ul class="nav navbar-nav">
+          <li><button id="hideVerticalNavWithRouter" class="hide-vertical-nav">Exit Vertical Navigation Demo</button></li>
+          </ul>
+          <ul class="nav navbar-nav navbar-right navbar-iconic">
+            <li class="dropdown">
+            </li>
+            <li class="dropdown">
+              <a class="dropdown-toggle nav-item-iconic" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                <span title="Help" class="fa pficon-help"></span>
+                <span class="caret"></span>
+              </a>
+              <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+                <li><a href="#">Help</a></li>
+                <li><a href="#">About</a></li>
+              </ul>
+            </li>
+            <li class="dropdown">
+              <a class="dropdown-toggle nav-item-iconic" id="dropdownMenu2" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                <span title="Username" class="fa pficon-user"></span>
+                <span class="caret"></span>
+              </a>
+              <ul class="dropdown-menu" aria-labelledby="dropdownMenu2">
+                <li><a href="#">Preferences</a></li>
+                <li><a href="#">Logout</a></li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div id="contentContainer" class="container-fluid container-cards-pf container-pf-nav-pf-vertical example-page-container">
+        <ui-view>
+          <!-- Content will be added here -->
+        </ui-view>
+      </div>
+    </div>
+  </file>
+  <file name="script.js">
+    angular.module('myApp',['patternfly.navigation', 'ui.router'])
+      .config(function($stateProvider, $urlRouterProvider) {
+        $urlRouterProvider.otherwise('dashboard');
+
+        $stateProvider
+            .state('dashboard', {
+                url: '/dashboard',
+                template: '<div class="card-pf card-pf-accented card-pf-aggregate-status" style="height: 89px;">\
+                              <div class="card-pf-body" style="height: 50px;">\
+                                <p class="card-pf-aggregate-status-notifications">\
+                                  State: Dashboard\
+                                </p>\
+                              </div>\
+                            </div>'
+            })
+            .state('dolor', {
+                url: '/dolor',
+                template: '<div class="card-pf card-pf-accented card-pf-aggregate-status" style="height: 89px;">\
+                              <div class="card-pf-body" style="height: 50px;">\
+                                <p class="card-pf-aggregate-status-notifications">\
+                                  State: Dolor\
+                                </p>\
+                              </div>\
+                            </div>'
+            })
+            .state('ipsum', {
+                url: '/ipsum',
+                template: '<div class="card-pf card-pf-accented card-pf-aggregate-status" style="height: 89px;">\
+                              <div class="card-pf-body" style="height: 50px;">\
+                                <p class="card-pf-aggregate-status-notifications">\
+                                  State: Ipsum\
+                                </p>\
+                              </div>\
+                            </div>'
+            });
+    })
+      .controller('vertNavWithRouterController', ['$scope',
+        function ($scope) {
+          $scope.navigationItems = [
+            {
+              title: "Dashboard",
+              iconClass: "fa fa-dashboard",
+              uiSref: "dashboard"
+            },
+            {
+              title: "Dolor",
+              iconClass : "fa fa-shield",
+              uiSref: "dolor"
+            },
+            {
+              title: "Ipsum",
+              iconClass : "fa fa-space-shuttle",
+              uiSref: "ipsum"
+            },
+            {
+              title: "Exit Demo"
+            }
+          ];
+          $scope.handleNavigateClickRouter = function (item) {
+            if (item.title === "Exit Demo") {
+              angular.element(document.querySelector("#verticalNavWithRouterLayout")).addClass("hidden");
+            }
+          };
+        }
+      ]);
+  </file>
+  <file name="hide-show.js">
+    $(document).ready(function() {
+      $(document).on('click', '#showVerticalNavWithRouter', function() {
+        $(document.getElementById("verticalNavWithRouterLayout")).removeClass("hidden");
+      });
+      $(document).on('click', '#hideVerticalNavWithRouter', function() {
+        $(document.getElementById("verticalNavWithRouterLayout")).addClass("hidden");
+      });
+    });
+  </file>
+</example>
+*/
+;angular.module('patternfly.navigation').directive('pfVerticalNavigation', ['$location', '$rootScope', '$window', '$document', '$timeout',  '$injector',
+  function (location, rootScope, $window, $document, $timeout, $injector) {
     'use strict';
+    var $state;
+
+    // Optional dependency on $state
+    if ($injector.has("$state")) {
+      $state = $injector.get("$state");
+    }
+
     return {
       restrict: 'A',
       scope: {
@@ -4672,12 +4908,23 @@ angular.module('patternfly.modals')
           var navTo;
           if (navItem) {
             $scope.showMobileNav = false;
-            navTo = navItem.href;
-            if (navTo) {
-              if (navTo.startsWith('#/')) {
-                navTo = navTo.substring(2);
+            if (navItem.uiSref && navItem.href) {
+              throw new Error('Using both uiSref and href on an item is not supported.');
+            }
+            if (navItem.uiSref) {
+              if ($state === undefined) {
+                throw new Error('uiSref is defined on item, but no $state has been injected. ' +
+                'Did you declare a dependency on "ui.router" module in your app?');
               }
-              location.path(navTo);
+              $state.go(navItem.uiSref, navItem.uiSrefOptions);
+            } else {
+              navTo = navItem.href;
+              if (navTo) {
+                if (navTo.startsWith('#/')) {
+                  navTo = navTo.substring(2);
+                }
+                location.path(navTo);
+              }
             }
             if ($scope.navigateCallback) {
               $scope.navigateCallback(navItem);
@@ -6391,6 +6638,10 @@ angular.module('patternfly.select', []).directive('pfSelect', ["$timeout", funct
         });
       };
 
+      var selectpickerDestroy = function () {
+        element.selectpicker('destroy');
+      };
+
       element.selectpicker(scope.selectPickerOptions);
 
       ngModel.$render = function () {
@@ -6411,6 +6662,8 @@ angular.module('patternfly.select', []).directive('pfSelect', ["$timeout", funct
       }
 
       attrs.$observe('disabled', selectpickerRefresh);
+
+      scope.$on('$destroy', selectpickerDestroy);
     }
   };
 }]);
@@ -7121,43 +7374,43 @@ angular.module('patternfly.toolbars').directive('pfToolbar', function () {
  * @restrict A
  * @element ANY
  * @param {string} scrollSelector specifies the selector to be used to find the element that should scroll (optional, the entire collapse area scrolls by default)
- * @param {string} groupHeight Height to set for accordion group (optional)
- * @param {string} groupClass Class to set for accordion group (optional)
+ * @param {string} groupHeight Height to set for uib-accordion group (optional)
+ * @param {string} groupClass Class to set for uib-accordion group (optional)
  *
  * @description
- *   Directive for setting a ui-boostrap accordion to use a fixed height (collapse elements scroll when necessary)
+ *   Directive for setting a ui-bootstrap uib-accordion to use a fixed height (collapse elements scroll when necessary)
  *
  * @example
  <example module="patternfly.utils" deps="ui.bootstrap">
  <file name="index.html">
  <div class="row example-container">
    <div class="col-md-4">
-     <accordion  pf-fixed-accordion  group-height="350px" close-others="true">
-       <accordion-group is-open="false" heading="Lorem ipsum">
+     <uib-accordion  pf-fixed-accordion  group-height="350px" close-others="true">
+       <uib-accordion-group is-open="false" heading="Lorem ipsum">
          Praesent sagittis est et arcu fringilla placerat. Cras erat ante, dapibus non mauris ac, volutpat sollicitudin ligula. Morbi gravida nisl vel risus tempor, sit amet luctus erat tempus. Curabitur blandit sem non pretium bibendum. Donec eleifend non turpis vitae vestibulum. Vestibulum ut sem ac nunc posuere blandit sed porta lorem. Cras rutrum velit vel leo iaculis imperdiet.
-       </accordion-group>
-       <accordion-group is-open="false" heading="Dolor sit amet">
+       </uib-accordion-group>
+       <uib-accordion-group is-open="false" heading="Dolor sit amet">
          Donec consequat dignissim neque, sed suscipit quam egestas in. Fusce bibendum laoreet lectus commodo interdum. Vestibulum odio ipsum, tristique et ante vel, iaculis placerat nulla. Suspendisse iaculis urna feugiat lorem semper, ut iaculis risus tempus.
-       </accordion-group>
-       <accordion-group is-open="false" heading="Consectetur">
+       </uib-accordion-group>
+       <uib-accordion-group is-open="false" heading="Consectetur">
          Curabitur nisl quam, interdum a venenatis a, consequat a ligula. Nunc nec lorem in erat rhoncus lacinia at ac orci. Sed nec augue congue, vehicula justo quis, venenatis turpis. Nunc quis consectetur purus. Nam vitae viverra lacus. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum eu augue felis. Maecenas in dignissim purus, quis pulvinar lectus. Vivamus euismod ultrices diam, in mattis nibh.
-       </accordion-group>
-       <accordion-group is-open="false" heading="Adipisicing elit">
+       </uib-accordion-group>
+       <uib-accordion-group is-open="false" heading="Adipisicing elit">
          Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-       </accordion-group>
-       <accordion-group is-open="false" heading="Suspendisse lectus tortor">
+       </uib-accordion-group>
+       <uib-accordion-group is-open="false" heading="Suspendisse lectus tortor">
          Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Sed non risus. Suspendisse lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor. Cras elementum ultrices diam. Maecenas ligula massa, varius a, semper congue, euismod non, mi. Proin porttitor, orci nec nonummy molestie, enim est eleifend mi, non fermentum diam nisl sit amet erat. Duis semper. Duis arcu massa, scelerisque vitae, consequat in, pretium a, enim. Pellentesque congue. Ut in risus volutpat libero pharetra tempor. Cras vestibulum bibendum augue. Praesent egestas leo in pede. Praesent blandit odio eu enim. Pellentesque sed dui ut augue blandit sodales. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae; Aliquam nibh. Mauris ac mauris sed pede pellentesque fermentum. Maecenas adipiscing ante non diam sodales hendrerit.
-       </accordion-group>
-       <accordion-group is-open="false" heading="Velit mauris">
+       </uib-accordion-group>
+       <uib-accordion-group is-open="false" heading="Velit mauris">
          Ut velit mauris, egestas sed, gravida nec, ornare ut, mi. Aenean ut orci vel massa suscipit pulvinar. Nulla sollicitudin. Fusce varius, ligula non tempus aliquam, nunc turpis ullamcorper nibh, in tempus sapien eros vitae ligula. Pellentesque rhoncus nunc et augue. Integer id felis. Curabitur aliquet pellentesque diam. Integer quis metus vitae elit lobortis egestas. Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Morbi vel erat non mauris convallis vehicula. Nulla et sapien. Integer tortor tellus, aliquam faucibus, convallis id, congue eu, quam. Mauris ullamcorper felis vitae erat. Proin feugiat, augue non elementum posuere, metus purus iaculis lectus, et tristique ligula justo vitae magna.
-       </accordion-group>
-       <accordion-group is-open="false" heading="Aliquam convallis">
+       </uib-accordion-group>
+       <uib-accordion-group is-open="false" heading="Aliquam convallis">
          Aliquam convallis sollicitudin purus. Praesent aliquam, enim at fermentum mollis, ligula massa adipiscing nisl, ac euismod nibh nisl eu lectus. Fusce vulputate sem at sapien. Vivamus leo. Aliquam euismod libero eu enim. Nulla nec felis sed leo placerat imperdiet. Aenean suscipit nulla in justo. Suspendisse cursus rutrum augue. Nulla tincidunt tincidunt mi. Curabitur iaculis, lorem vel rhoncus faucibus, felis magna fermentum augue, et ultricies lacus lorem varius purus. Curabitur eu amet.
-       </accordion-group>
-       <accordion-group is-open="false" heading="Vulputate dictum">
+       </uib-accordion-group>
+       <uib-accordion-group is-open="false" heading="Vulputate dictum">
          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed at ante. Mauris eleifend, quam a vulputate dictum, massa quam dapibus leo, eget vulputate orci purus ut lorem. In fringilla mi in ligula. Pellentesque aliquam quam vel dolor. Nunc adipiscing. Sed quam odio, tempus ac, aliquam molestie, varius ac, tellus. Vestibulum ut nulla aliquam risus rutrum interdum. Pellentesque lorem. Curabitur sit amet erat quis risus feugiat viverra. Pellentesque augue justo, sagittis et, lacinia at, venenatis non, arcu. Nunc nec libero. In cursus dictum risus. Etiam tristique nisl a nulla. Ut a orci. Curabitur dolor nunc, egestas at, accumsan at, malesuada nec, magna.
-       </accordion-group>
-     </accordion>
+       </uib-accordion-group>
+     </uib-accordion>
    </div>
  </div>
  </file>
@@ -7955,15 +8208,19 @@ angular.module('patternfly.views').directive('pfCardView', ["pfUtils", function 
  *
  * @description
  *   Directive for rendering a list view.
+ *   Pass a customScope object containing any scope variables/functions you need to access from the transcluded source, access these
+ *   via 'customScope' in your transcluded hmtl.
  *   <br><br>
+ *   If using expanding rows, use a list-expanded-content element containing expandable content for each row.  Item data can be accessed inside list-expanded-content by using $parent.item.property.  For each item in the items array, the expansion can be disabled by setting disableRowExpansion to true on the item.
  *
- * @param {array} items Array of items to display in the list view
+ * @param {array} items Array of items to display in the list view. If an item in the array has a 'rowClass' field, the value of this field will be used as a class specified on the row (list-group-item).
  * @param {object} config Configuration settings for the list view:
  * <ul style='list-style-type: none'>
  * <li>.showSelectBox          - (boolean) Show item selection boxes for each item, default is true
  * <li>.selectItems            - (boolean) Allow row selection, default is false
  * <li>.dlbClick               - (boolean) Handle double clicking (item remains selected on a double click). Default is false.
  * <li>.multiSelect            - (boolean) Allow multiple row selections, selectItems must also be set, not applicable when dblClick is true. Default is false
+ * <li>.useExpandingRows       - (boolean) Allow row expansion for each list item.
  * <li>.selectionMatchProp     - (string) Property of the items to use for determining matching, default is 'uuid'
  * <li>.selectedItems          - (array) Current set of selected items
  * <li>.checkDisabled          - ( function(item) ) Function to call to determine if an item is disabled, default is none
@@ -7977,6 +8234,9 @@ angular.module('patternfly.views').directive('pfCardView', ["pfUtils", function 
  *   <ul style='list-style-type: none'>
  *     <li>.name - (String) The name of the action, displayed on the button
  *     <li>.title - (String) Optional title, used for the tooltip
+ *     <li>.class - (String) Optional class to add to the action button
+ *     <li>.include - (String) Optional include src for the button. Used for custom button layouts (icons, dropdowns, etc)
+ *     <li>.includeClass - (String) Optional class to set on the include src div (only relevant when include is set).
  *     <li>.actionFn - (function(action)) Function to invoke when the action selected
  *   </ul>
  * @param {function (action, item))} enableButtonForItemFn function(action, item) Used to enabled/disable an action button based on the current item
@@ -7989,7 +8249,10 @@ angular.module('patternfly.views').directive('pfCardView', ["pfUtils", function 
  *     <li>.isDisabled - (Boolean) set to true to disable the action
  *     <li>.isSeparator - (Boolean) set to true if this is a placeholder for a separator rather than an action
  *   </ul>
+ * @param {function (item))} hideMenuForItemFn function(item) Used to hide all menu actions for a particular item
+ * @param {function (item))} menuClassForItemFn function(item) Used to specify a class for an item's dropdown kebab
  * @param {function (action, item))} updateMenuActionForItemFn function(action, item) Used to update a menu action based on the current item
+ * @param {object} customScope Object containing any variables/functions used by the transcluded html, access via customScope.<xxx>
  * @example
 <example module="patternfly.views" deps="patternfly.utils">
   <file name="index.html">
@@ -8000,7 +8263,9 @@ angular.module('patternfly.views').directive('pfCardView', ["pfUtils", function 
                           action-buttons="actionButtons"
                           enable-button-for-item-fn="enableButtonForItemFn"
                           menu-actions="menuActions"
-                          update-menu-action-for-item-fn="updateMenuActionForItemFn">
+                          update-menu-action-for-item-fn="updateMenuActionForItemFn"
+                          menu-class-for-item-fn="getMenuClass"
+                          hide-menu-for-item-fn="hideMenuActions">
           <div class="list-view-pf-description">
             <div class="list-group-item-heading">
               {{item.name}}
@@ -8017,6 +8282,35 @@ angular.module('patternfly.views').directive('pfCardView', ["pfUtils", function 
               {{item.state}}
             </div>
           </div>
+          <list-expanded-content>
+           <div class="row">
+            <div class="col-md-3">
+              <div pf-donut-pct-chart config="exampleChartConfig" data="{'used': '350','total': '1000'}" center-label="'Percent Used'"></div>
+            </div>
+            <div class="col-md-9">
+               <dl class="dl-horizontal">
+                 <dt>Host</dt>
+                 <dd>{{$parent.item.city}}</dd>
+                 <dt>Admin</dt>
+                 <dd>{{$parent.item.name}}</dd>
+                 <dt>Time</dt>
+                 <dd>January 15, 2016 10:45:11 AM</dd>
+                 <dt>Severity</dt>
+                 <dd>Warning</dd>
+                 <dt>Cluster</dt>
+                 <dd>Cluster 1</dd>
+               </dl>
+               <p>
+                 Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
+                 tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+                 quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+                 consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
+                 cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+                 proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+               </p>
+             </div>
+           </div>
+          </list-expanded-content>
         </div>
       </div>
       <hr class="col-md-12">
@@ -8055,6 +8349,9 @@ angular.module('patternfly.views').directive('pfCardView', ["pfUtils", function 
             <label class="checkbox-inline">
               <input type="checkbox" ng-model="showDisabled">Show Disabled Rows</input>
             </label>
+           <label class="checkbox-inline">
+              <input type="checkbox" ng-model="config.useExpandingRows">Show Expanding Rows</input>
+           </label>
           </div>
         </form>
       </div>
@@ -8068,8 +8365,8 @@ angular.module('patternfly.views').directive('pfCardView', ["pfUtils", function 
   </file>
 
   <file name="script.js">
- angular.module('patternfly.views').controller('ViewCtrl', ['$scope',
-      function ($scope) {
+ angular.module('patternfly.views').controller('ViewCtrl', ['$scope', '$templateCache',
+      function ($scope, $templateCache) {
         $scope.eventText = '';
         var handleSelect = function (item, e) {
           $scope.eventText = item.name + ' selected\r\n' + $scope.eventText;
@@ -8092,12 +8389,22 @@ angular.module('patternfly.views').directive('pfCardView', ["pfUtils", function 
         };
 
         $scope.enableButtonForItemFn = function(action, item) {
-          return (action.name !=='Action 2') || (item.name !== "Frank Livingston");
+          return !((action.name ==='Action 2') && (item.name === "Frank Livingston")) &&
+                 !(action.name === 'Start' && item.started);
         };
 
         $scope.updateMenuActionForItemFn = function(action, item) {
           if (action.name === 'Another Action') {
             action.isVisible = (item.name !== "John Smith");
+          }
+        };
+
+        $scope.exampleChartConfig = {
+          'chartId': 'pctChart',
+          'units': 'GB',
+          'thresholds': {
+            'warning':'60',
+            'error':'90'
           }
         };
 
@@ -8125,6 +8432,7 @@ angular.module('patternfly.views').directive('pfCardView', ["pfUtils", function 
          selectedItems: [],
          checkDisabled: checkDisabledItem,
          showSelectBox: true,
+         useExpandingRows: false,
          onSelect: handleSelect,
          onSelectionChange: handleSelectionChange,
          onCheckBoxChange: handleCheckBoxChange,
@@ -8143,7 +8451,8 @@ angular.module('patternfly.views').directive('pfCardView', ["pfUtils", function 
             name: "John Smith",
             address: "415 East Main Street",
             city: "Norfolk",
-            state: "Virginia"
+            state: "Virginia",
+            disableRowExpansion: true
           },
           {
             name: "Frank Livingston",
@@ -8158,7 +8467,7 @@ angular.module('patternfly.views').directive('pfCardView', ["pfUtils", function 
             state: "Colorado"
           },
           {
-            name: "Jim Beam",
+            name: "Jim Brown",
             address: "72 Bourbon Way",
             city: "Nashville",
             state: "Tennessee"
@@ -8183,11 +8492,41 @@ angular.module('patternfly.views').directive('pfCardView', ["pfUtils", function 
           },
         ];
 
+        $scope.getMenuClass = function (item) {
+          var menuClass = "";
+          if (item.name === "Jim Brown") {
+            menuClass = 'red';
+          }
+          return menuClass;
+        };
+
+        $scope.hideMenuActions = function (item) {
+          return (item.name === "Marie Edwards");
+        };
+
         var performAction = function (action, item) {
           $scope.eventText = item.name + " : " + action.name + "\r\n" + $scope.eventText;
         };
 
+        var startServer = function (action, item) {
+          $scope.eventText = item.name + " : " + action.name + "\r\n" + $scope.eventText;
+          item.started = true;
+        };
+
+        var buttonInclude = '<span class="fa fa-plus"></span>{{actionButton.name}}';
+        $templateCache.put('my-button-template', buttonInclude);
+
+        var startButtonInclude = '<span ng-disabled="item.started">{{item.started ? "Starting" : "Start"}}</span>';
+        $templateCache.put('start-button-template', startButtonInclude);
+
         $scope.actionButtons = [
+          {
+            name: 'Start',
+            class: 'btn-primary',
+            include: 'start-button-template',
+            title: 'Start the server',
+            actionFn: startServer
+          },
           {
             name: 'Action 1',
             title: 'Perform an action',
@@ -8196,6 +8535,12 @@ angular.module('patternfly.views').directive('pfCardView', ["pfUtils", function 
           {
             name: 'Action 2',
             title: 'Do something else',
+            actionFn: performAction
+          },
+          {
+            name: 'Action 3',
+            include: 'my-button-template',
+            title: 'Do something special',
             actionFn: performAction
           }
         ];
@@ -8250,11 +8595,16 @@ angular.module('patternfly.views').directive('pfListView', ["$timeout", "$window
       actionButtons: '=?',
       enableButtonForItemFn: '=?',
       menuActions: '=?',
+      hideMenuForItemFn: '=?',
+      menuClassForItemFn: '=?',
       updateMenuActionForItemFn: '=?',
       actions: '=?',
-      updateActionForItemFn: '=?'
+      updateActionForItemFn: '=?',
+      customScope: '=?'
     },
-    transclude: true,
+    transclude: {
+      expandedContent: '?listExpandedContent'
+    },
     templateUrl: 'views/listview/list-view.html',
     controller:
       ["$scope", "$element", function ($scope, $element) {
@@ -8281,6 +8631,7 @@ angular.module('patternfly.views').directive('pfListView', ["$timeout", "$window
           selectionMatchProp: 'uuid',
           selectedItems: [],
           checkDisabled: false,
+          useExpandingRows: false,
           showSelectBox: true,
           onSelect: null,
           onSelectionChange: null,
@@ -8323,6 +8674,28 @@ angular.module('patternfly.views').directive('pfListView', ["$timeout", "$window
               $scope.updateMenuActionForItemFn(action, item);
             });
           }
+        };
+
+        $scope.getMenuClassForItem = function (item) {
+          var menuClass = '';
+          if (angular.isFunction($scope.menuClassForItemFn)) {
+            menuClass = $scope.menuClassForItemFn(item);
+          }
+
+          return menuClass;
+        };
+
+        $scope.hideMenuForItem = function (item) {
+          var hideMenu = false;
+          if (angular.isFunction($scope.hideMenuForItemFn)) {
+            hideMenu = $scope.hideMenuForItemFn(item);
+          }
+
+          return hideMenu;
+        };
+
+        $scope.toggleItemExpansion = function (item) {
+          item.isExpanded = !item.isExpanded;
         };
 
         $scope.setupActions = function (item, event) {
@@ -8493,6 +8866,1253 @@ angular.module('patternfly.views').directive('pfListView', ["$timeout", "$window
     }
   });
 })();
+;(function () {
+  'use strict';
+  function pfWizardButtonDirective (action) {
+    angular.module('patternfly.wizard')
+      .directive(action, function () {
+        return {
+          restrict: 'A',
+          require: '^pf-wizard',
+          scope: {
+            callback: "=?"
+          },
+          link: function ($scope, $element, $attrs, wizard) {
+            $element.on("click", function (e) {
+              e.preventDefault();
+              $scope.$apply(function () {
+                // scope apply in button module
+                $scope.$eval($attrs[action]);
+                wizard[action.replace("pfWiz", "").toLowerCase()]($scope.callback);
+              });
+            });
+          }
+        };
+      });
+  }
+
+  pfWizardButtonDirective('pfWizNext');
+  pfWizardButtonDirective('pfWizPrevious');
+  pfWizardButtonDirective('pfWizFinish');
+  pfWizardButtonDirective('pfWizCancel');
+  pfWizardButtonDirective('pfWizReset');
+})();
+;/**
+  * @ngdoc directive
+  * @name patternfly.wizard.directive:pfWizard
+  *
+  * @description
+  * Directive for rendering a Wizard modal.  Each wizard dynamically creates the step navigation both in the header and the left-hand side based on nested steps.
+  * Use the pf-wizardstep to define individual steps within a wizard and pf-wizardsubstep to define portions of pf-wizardsteps if so desired.  For instance, Step one can have two substeps - 1A and 1B when it is logical to group those together.
+  * <br /><br />
+  * The basic structure should be:
+  * <pre>
+  * <div pf-wizard>
+  *   <div pf-wizardstep>
+  *     <div pf-wizardsubstep><!-- content here --></div>
+  *     <div pf-wizardsubstep><!-- content here --></div>
+  *   </div>
+  *   <div pf-wizardstep><!-- additional configuration can be added here with substeps if desired --></div>
+  *   <div pf-wizardstep><!-- review steps and final command here --></div>
+  * </div>
+  * </pre>
+  *
+  * @param {string} title The wizard title displayed in the header
+  * @param {boolean=} hideIndicators  Hides the step indicators in the header of the wizard
+  * @param {string=} currentStep The current step can be changed externally - this is the title of the step to switch the wizard to
+  * @param {string=} cancelTitle The text to display on the cancel button
+  * @param {string=} backTitle The text to display on the back button
+  * @param {string=} nextTitle The text to display on the next button
+  * @param {function(step)=} backCallback Called to notify when the back button is clicked
+  * @param {function(step)=} nextCallback Called to notify when the next button is clicked
+  * @param {function()=} onFinish Called to notify when when the wizard is complete.  Returns a boolean value to indicate if the finish operation is complete
+  * @param {function()=} onCancel Called when the wizard is canceled, returns a boolean value to indicate if cancel is successful
+  * @param {boolean} wizardReady Value that is set when the wizard is ready
+  * @param {boolean=} wizardDone  Value that is set when the wizard is done
+  * @param {string} loadingWizardTitle The text displayed when the wizard is loading
+  * @param {string=} loadingSecondaryInformation Secondary descriptive information to display when the wizard is loading
+  * @param {string=} contentHeight The height the wizard content should be set to.  This defaults to 300px if the property is not supplied.
+  * @param {boolean=} embedInPage Value that indicates wizard is embedded in a page (not a modal).  This moves the navigation buttons to the left hand side of the footer and removes the close button.
+  *
+  * @example
+  <example module="patternfly.wizard" deps="patternfly.form">
+  <file name="index.html">
+    <div ng-controller="WizardModalController">
+      <button ng-click="openWizardModel()" class="btn btn-default">Launch Wizard</button>
+    </div>
+  </file>
+  <file name="wizard-container.html">
+  <div pf-wizard title="Wizard Title"
+    wizard-ready="deployProviderReady"
+    on-finish="finishedWizard()"
+    on-cancel="cancelDeploymentWizard()"
+    next-title="nextButtonTitle"
+    next-callback="nextCallback"
+    back-callback="backCallback"
+    wizard-done="deployComplete || deployInProgress"
+    content-height="'600px'"
+    loading-secondary-information="secondaryLoadInformation">
+      <div pf-wizard-step step-title="First Step" substeps="true" step-id="details" step-priority="0" show-review="true" show-review-details="true">
+        <div ng-include="'detail-page.html'">
+        </div>
+        <div pf-wizard-substep step-title="Details - Extra" next-enabled="true" step-id="details-extra" step-priority="1" show-review="true" show-review-details="true" review-template="review-second-template.html">
+          <form class="form-horizontal">
+            <div pf-form-group pf-label="Lorem" required>
+              <input id="new-lorem" name="lorem" ng-model="data.lorem" type="text" required/>
+            </div>
+            <div pf-form-group pf-label="Ipsum">
+              <input id="new-ipsum" name="ipsum" ng-model="data.ipsum" type="text" />
+            </div>
+          </form>
+        </div>
+      </div>
+      <div pf-wizard-step step-title="Second Step" substeps="false" step-id="configuration" step-priority="1" show-review="true" review-template="review-second-template.html" >
+        <form class="form-horizontal">
+          <h3>Wizards should make use of substeps consistently throughout (either using them or not using them).  This is an example only.</h3>
+          <div pf-form-group pf-label="Lorem">
+            <input id="new-lorem" name="lorem" ng-model="data.lorem" type="text"/>
+          </div>
+          <div pf-form-group pf-label="Ipsum">
+            <input id="new-ipsum" name="ipsum" ng-model="data.ipsum" type="text" />
+          </div>
+        </form>
+      </div>
+      <div pf-wizard-step step-title="Review" substeps="true" step-id="review" step-priority="2">
+        <div ng-include="'summary.html'"></div>
+        <div ng-include="'deployment.html'"></div>
+      </div>
+   </div>
+  </file>
+  <file name="detail-page.html">
+    <div ng-controller="DetailsGeneralController">
+       <div pf-wizard-substep step-title="General" next-enabled="detailsGeneralComplete" step-id="details-general" step-priority="0" on-show="onShow" review-template="{{reviewTemplate}}" show-review-details="true">
+         <form class="form-horizontal">
+           <div pf-form-group pf-label="Name" required>
+            <input id="new-name" name="name" ng-model="data.name" type="text" ng-change="updateName()" required/>
+           </div>
+           <div pf-form-group pf-label="Description">
+            <input id="new-description" name="description" ng-model="data.description" type="text" />
+           </div>
+         </form>
+      </div>
+    </div>
+  </file>
+  <file name="review-template.html">
+  <div ng-controller="DetailsReviewController">
+    <form class="form">
+      <div class="wizard-pf-review-item">
+        <span class="wizard-pf-review-item-label">Name:</span>
+        <span class="wizard-pf-review-item-value">{{data.name}}</span>
+      </div>
+      <div class="wizard-pf-review-item">
+        <span class="wizard-pf-review-item-label">Description:</span>
+        <span class="wizard-pf-review-item-value">{{data.description}}</span>
+      </div>
+    </form>
+  </div>
+  </file>
+  <file name="review-second-template.html">
+  <div ng-controller="DetailsReviewController">
+    <form class="form">
+      <div class="wizard-pf-review-item">
+        <span class="wizard-pf-review-item-label">Lorem:</span>
+        <span class="wizard-pf-review-item-value">{{data.lorem}}</span>
+      </div>
+      <div class="wizard-pf-review-item">
+        <span class="wizard-pf-review-item-label">Ipsum:</span>
+        <span class="wizard-pf-review-item-value">{{data.ipsum}}</span>
+      </div>
+    </form>
+  </div>
+  </file>
+  <file name="summary.html">
+  <div ng-controller="SummaryController">
+    <div pf-wizard-substep step-title="Summary" step-id="review-summary" step-priority="0" next-enabled="true" prev-enabled="true" ok-to-nav-away="true" wz-disabled="false" on-show="onShow">
+      <div pf-wizard-review-page shown="pageShown" wizard-data="data"></div>
+    </div>
+  </div>
+  </file>
+  <file name="deployment.html">
+  <div ng-controller="DeploymentController">
+    <div pf-wizard-substep step-title="Deploy" step-id="review-progress" step-priority="1" next-enabled="true" prev-enabled="false" ok-to-nav-away="true" wz-disabled="false" on-show="onShow">
+      <div class="wizard-pf-contents" ng-controller="DeploymentController">
+        <div class="wizard-pf-process blank-slate-pf" ng-if="!deploymentComplete">
+          <div class="spinner spinner-lg blank-slate-pf-icon"></div>
+          <h3 class="blank-slate-pf-main-action">Deployment in progress</h3>
+          <p class="blank-slate-pf-secondary-action">Lorem ipsum dolor sit amet, porta at suspendisse ac, ut wisi vivamus, lorem sociosqu eget nunc amet. </p>
+        </div>
+        <div class="wizard-pf-complete blank-slate-pf" ng-if="deploymentComplete">
+          <div class="wizard-pf-success-icon"><span class="glyphicon glyphicon-ok-circle"></span></div>
+          <h3 class="blank-slate-pf-main-action">Deployment was successful</h3>
+          <p class="blank-slate-pf-secondary-action">Lorem ipsum dolor sit amet, porta at suspendisse ac, ut wisi vivamus, lorem sociosqu eget nunc amet. </p>
+          <button type="button" class="btn btn-lg btn-primary">View Deployment</button>
+        </div>
+     </div>
+   </div>
+  </div>
+  </file>
+  <file name="script.js">
+  angular.module('patternfly.wizard').controller('WizardModalController', ['$scope', '$timeout', '$uibModal', '$rootScope',
+    function ($scope, $timeout, $uibModal, $rootScope) {
+      $scope.openWizardModel = function () {
+        var wizardDoneListener,
+            modalInstance = $uibModal.open({
+              animation: true,
+              backdrop: 'static',
+              templateUrl: 'wizard-container.html',
+              controller: 'WizardController',
+              size: 'lg'
+            });
+
+        var closeWizard = function (e, reason) {
+          modalInstance.dismiss(reason);
+          wizardDoneListener();
+        };
+
+        modalInstance.result.then(function () { }, function () { });
+
+        wizardDoneListener = $rootScope.$on('wizard.done', closeWizard);
+      };
+    }
+  ]);
+  angular.module('patternfly.wizard').controller('WizardController', ['$scope', '$timeout', '$rootScope',
+    function ($scope, $timeout, $rootScope) {
+
+
+      var initializeWizard = function () {
+        $scope.data = {
+          name: '',
+          description: '',
+          lorem: 'default setting',
+          ipsum: ''
+        };
+        $scope.secondaryLoadInformation = 'ipsum dolor sit amet, porta at suspendisse ac, ut wisi vivamus, lorem sociosqu eget nunc amet.';
+        $timeout(function () {
+          $scope.deployReady = true;
+        }, 1000);
+        $scope.nextButtonTitle = "Next >";
+      };
+
+      var startDeploy = function () {
+        $timeout(function() { }, 2000);
+        $scope.deployInProgress = true;
+      };
+
+      $scope.data = {};
+
+      $scope.nextCallback = function (step) {
+        // call startdeploy after deploy button is clicked on review-summary tab
+        if (step.stepId === 'review-summary') {
+          startDeploy();
+        }
+        return true;
+      };
+      $scope.backCallback = function (step) {
+        return true;
+      };
+
+      $scope.$on("wizard:stepChanged", function (e, parameters) {
+        if (parameters.step.stepId === 'review-summary') {
+          $scope.nextButtonTitle = "Deploy";
+        } else if (parameters.step.stepId === 'review-progress') {
+          $scope.nextButtonTitle = "Close";
+        } else {
+          $scope.nextButtonTitle = "Next >";
+        }
+      });
+
+      $scope.cancelDeploymentWizard = function () {
+        $rootScope.$emit('wizard.done', 'cancel');
+      };
+
+      $scope.finishedWizard = function () {
+        $rootScope.$emit('wizard.done', 'done');
+        return true;
+      };
+
+      initializeWizard();
+     }
+  ]);
+
+  angular.module('patternfly.wizard').controller('DetailsGeneralController', ['$rootScope', '$scope',
+    function ($rootScope, $scope) {
+      'use strict';
+
+      $scope.reviewTemplate = "review-template.html";
+      $scope.detailsGeneralComplete = false;
+
+      $scope.onShow = function() { };
+
+      $scope.updateName = function() {
+        $scope.detailsGeneralComplete = angular.isDefined($scope.data.name) && $scope.data.name.length > 0;
+      };
+    }
+  ]);
+
+  angular.module('patternfly.wizard').controller('DetailsReviewController', ['$rootScope', '$scope',
+    function ($rootScope, $scope) {
+      'use strict';
+
+      // Find the data!
+      var next = $scope;
+      while (angular.isUndefined($scope.data)) {
+        next = next.$parent;
+        if (angular.isUndefined(next)) {
+          $scope.data = {};
+        } else {
+          $scope.data = next.wizardData;
+        }
+      }
+    }
+  ]);
+
+  angular.module('patternfly.wizard').controller('SummaryController', ['$rootScope', '$scope', '$timeout',
+    function ($rootScope, $scope, $timeout) {
+      'use strict';
+      $scope.pageShown = false;
+
+      $scope.onShow = function () {
+        $scope.pageShown = true;
+        $timeout(function () {
+          $scope.pageShown = false;  // done so the next time the page is shown it updates
+        });
+      }
+    }
+  ]);
+
+  angular.module('patternfly.wizard').controller('DeploymentController', ['$rootScope', '$scope', '$timeout',
+    function ($rootScope, $scope, $timeout) {
+      'use strict';
+
+      $scope.onShow = function() {
+        $scope.deploymentComplete = false;
+        $timeout(function() {
+          $scope.deploymentComplete = true;
+        }, 2500);
+      };
+    }
+  ]);
+</file>
+</example>
+*/
+
+angular.module('patternfly.wizard').directive('pfWizard', ["$window", function ($window) {
+  'use strict';
+  return {
+    restrict: 'A',
+    transclude: true,
+    scope: {
+      title: '@',
+      hideIndicators: '=?',
+      currentStep: '=?',
+      cancelTitle: '=?',
+      backTitle: '=?',
+      nextTitle: '=?',
+      backCallback: '=?',
+      nextCallback: '=?',
+      onFinish: '&',
+      onCancel: '&',
+      wizardReady: '=?',
+      wizardDone: '=?',
+      loadingWizardTitle: '=?',
+      loadingSecondaryInformation: '=?',
+      contentHeight: '=?',
+      embedInPage: '=?'
+    },
+    templateUrl: 'wizard/wizard.html',
+    controller: ["$scope", "$timeout", function ($scope, $timeout) {
+      var firstRun = true;
+
+      var stepIdx = function (step) {
+        var idx = 0;
+        var res = -1;
+        angular.forEach($scope.getEnabledSteps(), function (currStep) {
+          if (currStep === step) {
+            res = idx;
+          }
+          idx++;
+        });
+        return res;
+      };
+
+      var unselectAll = function () {
+        //traverse steps array and set each "selected" property to false
+        angular.forEach($scope.getEnabledSteps(), function (step) {
+          step.selected = false;
+        });
+        //set selectedStep variable to null
+        $scope.selectedStep = null;
+      };
+
+      var watchSelectedStep = function () {
+        // Remove any previous watchers
+        if ($scope.nextStepEnabledWatcher) {
+          $scope.nextStepEnabledWatcher();
+        }
+        if ($scope.nextStepTooltipWatcher) {
+          $scope.nextStepTooltipWatcher();
+        }
+        if ($scope.prevStepEnabledWatcher) {
+          $scope.prevStepEnabledWatcher();
+        }
+        if ($scope.prevStepTooltipWatcher) {
+          $scope.prevStepTooltipWatcher();
+        }
+
+        // Add watchers for the selected step
+        $scope.nextStepEnabledWatcher = $scope.$watch('selectedStep.nextEnabled', function (value) {
+          $scope.nextEnabled = value;
+        });
+        $scope.nextStepTooltipWatcher = $scope.$watch('selectedStep.nextTooltip', function (value) {
+          $scope.nextTooltip = value;
+        });
+        $scope.prevStepEnabledWatcher = $scope.$watch('selectedStep.prevEnabled', function (value) {
+          $scope.prevEnabled = value;
+        });
+        $scope.prevStepTooltipWatcher = $scope.$watch('selectedStep.prevTooltip', function (value) {
+          $scope.prevTooltip = value;
+        });
+      };
+
+      var stepByTitle = function (titleToFind) {
+        var foundStep = null;
+        angular.forEach($scope.getEnabledSteps(), function (step) {
+          if (step.title === titleToFind) {
+            foundStep = step;
+          }
+        });
+        return foundStep;
+      };
+
+      $scope.steps = [];
+      $scope.context = {};
+      this.context = $scope.context;
+
+      if (angular.isUndefined($scope.wizardReady)) {
+        $scope.wizardReady = true;
+      }
+
+      if (angular.isUndefined($scope.contentHeight)) {
+        $scope.contentHeight = '300px';
+      }
+      this.contentHeight = $scope.contentHeight;
+      $scope.contentStyle = {
+        'height': $scope.contentHeight,
+        'max-height': $scope.contentHeight,
+        'overflow-y': 'auto'
+      };
+      this.contentStyle = $scope.contentStyle;
+
+      $scope.nextEnabled = false;
+      $scope.prevEnabled = false;
+
+      if (!$scope.cancelTitle) {
+        $scope.cancelTitle = "Cancel";
+      }
+      if (!$scope.backTitle) {
+        $scope.backTitle = "< Back";
+      }
+      if (!$scope.nextTitle) {
+        $scope.nextTitle = "Next >";
+      }
+
+      $scope.getEnabledSteps = function () {
+        return $scope.steps.filter(function (step) {
+          return step.disabled !== 'true';
+        });
+      };
+
+      this.getReviewSteps = function () {
+        return $scope.steps.filter(function (step) {
+          return !step.disabled &&
+            (!angular.isUndefined(step.reviewTemplate) || step.getReviewSteps().length > 0);
+        });
+      };
+
+      $scope.currentStepNumber = function () {
+        //retrieve current step number
+        return stepIdx($scope.selectedStep) + 1;
+      };
+
+      $scope.getStepNumber = function (step) {
+        return stepIdx(step) + 1;
+      };
+
+      //watching changes to currentStep
+      $scope.$watch('currentStep', function (step) {
+        //checking to make sure currentStep is truthy value
+        if (!step) {
+          return;
+        }
+
+        //setting stepTitle equal to current step title or default title
+        if ($scope.selectedStep && $scope.selectedStep.title !== $scope.currentStep) {
+          $scope.goTo(stepByTitle($scope.currentStep));
+        }
+      });
+
+      //watching steps array length and editMode value, if edit module is undefined or null the nothing is done
+      //if edit mode is truthy, then all steps are marked as completed
+      $scope.$watch('[editMode, steps.length]', function () {
+        var editMode = $scope.editMode;
+        if (angular.isUndefined(editMode) || (editMode === null)) {
+          return;
+        }
+
+        if (editMode) {
+          angular.forEach($scope.getEnabledSteps(), function (step) {
+            step.completed = true;
+          });
+        } else {
+          angular.forEach($scope.getEnabledSteps(), function (step, stepIndex) {
+            if (stepIndex >= ($scope.currentStepNumber() - 1)) {
+              step.completed = false;
+            }
+          });
+        }
+      }, true);
+
+      $scope.goTo = function (step, resetStepNav) {
+        if ($scope.wizardDone || ($scope.selectedStep && !$scope.selectedStep.okToNavAway) || step === $scope.selectedStep) {
+          return;
+        }
+
+        if (firstRun || ($scope.getStepNumber(step) < $scope.currentStepNumber() && $scope.selectedStep.isPrevEnabled()) || $scope.selectedStep.isNextEnabled()) {
+          unselectAll();
+
+          if (!firstRun && resetStepNav && step.substeps) {
+            step.resetNav();
+          }
+
+          $scope.selectedStep = step;
+          step.selected = true;
+
+          $timeout(function () {
+            if (angular.isFunction(step.onShow)) {
+              step.onShow();
+            }
+          }, 100);
+
+          watchSelectedStep();
+
+          // Make sure current step is not undefined
+          $scope.currentStep = step.title;
+
+          //emit event upwards with data on goTo() invocation
+          if (!step.substeps) {
+            $scope.$emit('wizard:stepChanged', {step: step, index: stepIdx(step)});
+          }
+          firstRun = false;
+        }
+
+        if (!$scope.selectedStep.substeps) {
+          $scope.firstStep =  stepIdx($scope.selectedStep) === 0;
+        } else {
+          $scope.firstStep = stepIdx($scope.selectedStep) === 0 && $scope.selectedStep.currentStepNumber() === 1;
+        }
+      };
+
+      $scope.stepClick = function (step) {
+        if (step.allowClickNav) {
+          $scope.goTo(step, true);
+        }
+      };
+
+      this.addStep = function (step) {
+        // Insert the step into step array
+        var insertBefore = _.find($scope.steps, function (nextStep) {
+          return nextStep.stepPriority > step.stepPriority;
+        });
+        if (insertBefore) {
+          $scope.steps.splice($scope.steps.indexOf(insertBefore), 0, step);
+        } else {
+          $scope.steps.push(step);
+        }
+
+        if ($scope.wizardReady && ($scope.getEnabledSteps().length > 0) && (step === $scope.getEnabledSteps()[0])) {
+          $scope.goTo($scope.getEnabledSteps()[0]);
+        }
+      };
+
+      this.isWizardDone = function () {
+        return $scope.wizardDone;
+      };
+
+      this.updateSubStepNumber = function (value) {
+        $scope.firstStep =  stepIdx($scope.selectedStep) === 0 && value === 0;
+      };
+
+      this.currentStepTitle = function () {
+        return $scope.selectedStep.title;
+      };
+
+      this.currentStepDescription = function () {
+        return $scope.selectedStep.description;
+      };
+
+      this.currentStep = function () {
+        return $scope.selectedStep;
+      };
+
+      this.totalStepCount = function () {
+        return $scope.getEnabledSteps().length;
+      };
+
+      this.getEnabledSteps = function () {
+        return $scope.getEnabledSteps();
+      };
+
+      //Access to current step number from outside
+      this.currentStepNumber = function () {
+        return $scope.currentStepNumber();
+      };
+
+      this.getStepNumber = function (step) {
+        return $scope.getStepNumber(step);
+      };
+
+      // Allow access to any step
+      this.goTo = function (step, resetStepNav) {
+        var enabledSteps = $scope.getEnabledSteps();
+        var stepTo;
+
+        if (angular.isNumber(step)) {
+          stepTo = enabledSteps[step];
+        } else {
+          stepTo = stepByTitle(step);
+        }
+
+        $scope.goTo(stepTo, resetStepNav);
+      };
+
+      // Method used for next button within step
+      this.next = function (callback) {
+        var enabledSteps = $scope.getEnabledSteps();
+
+        // Save the step  you were on when next() was invoked
+        var index = stepIdx($scope.selectedStep);
+
+        if ($scope.selectedStep.substeps) {
+          if ($scope.selectedStep.next(callback)) {
+            return;
+          }
+        }
+
+        // Check if callback is a function
+        if (angular.isFunction(callback)) {
+          if (callback($scope.selectedStep)) {
+            if (index === enabledSteps.length - 1) {
+              this.finish();
+            } else {
+              // Go to the next step
+              if (enabledSteps[index + 1].substeps) {
+                enabledSteps[index + 1].resetNav();
+              }
+            }
+          } else {
+            return;
+          }
+        }
+
+        // Completed property set on scope which is used to add class/remove class from progress bar
+        $scope.selectedStep.completed = true;
+
+        // Check to see if this is the last step.  If it is next behaves the same as finish()
+        if (index === enabledSteps.length - 1) {
+          this.finish();
+        } else {
+          // Go to the next step
+          $scope.goTo(enabledSteps[index + 1]);
+        }
+      };
+
+      this.previous = function (callback) {
+        var index = stepIdx($scope.selectedStep);
+
+        if ($scope.selectedStep.substeps) {
+          if ($scope.selectedStep.previous(callback)) {
+            return;
+          }
+        }
+
+        // Check if callback is a function
+        if (angular.isFunction(callback)) {
+          if (callback($scope.selectedStep)) {
+            if (index === 0) {
+              throw new Error("Can't go back. It's already in step 0");
+            } else {
+              $scope.goTo($scope.getEnabledSteps()[index - 1]);
+            }
+          }
+        }
+      };
+
+      this.finish = function () {
+        if ($scope.onFinish) {
+          if ($scope.onFinish() !== false) {
+            this.reset();
+          }
+        }
+      };
+
+      this.cancel = function () {
+        if ($scope.onCancel) {
+          if ($scope.onCancel() !== false) {
+            this.reset();
+          }
+        }
+      };
+
+      //reset
+      this.reset = function () {
+        //traverse steps array and set each "completed" property to false
+        angular.forEach($scope.getEnabledSteps(), function (step) {
+          step.completed = false;
+        });
+        //go to first step
+        this.goTo(0);
+      };
+    }],
+    link: function ($scope) {
+      $scope.$watch('wizardReady', function () {
+        if ($scope.wizardReady) {
+          $scope.goTo($scope.getEnabledSteps()[0]);
+        }
+      });
+    }
+  };
+}]);
+;/**
+ * @ngdoc directive
+ * @name patternfly.wizard.directive:pfWizardReviewPage
+ *
+ * @description
+ * Directive for rendering a Wizard Review Page - should only be used within a wizard.
+ *
+ * @param {boolean} shown Value watched internally by the wizard review page to know when it is visible.
+ * @param {object} wizardData  Sets the internal content of the review page to apply wizard data to the review templates.
+ *
+ */
+angular.module('patternfly.wizard').directive('pfWizardReviewPage', function () {
+  'use strict';
+  return {
+    restrict: 'A',
+    scope: {
+      shown: '=',
+      wizardData: "="
+    },
+    require: '^pf-wizard',
+    templateUrl: 'wizard/wizard-review-page.html',
+    controller: ["$scope", function ($scope) {
+      $scope.toggleShowReviewDetails = function (step) {
+        if (step.showReviewDetails === true) {
+          step.showReviewDetails = false;
+        } else {
+          step.showReviewDetails = true;
+        }
+      };
+      $scope.getSubStepNumber = function (step, substep) {
+        return step.getStepDisplayNumber(substep);
+      };
+      $scope.getReviewSubSteps = function (reviewStep) {
+        return reviewStep.getReviewSteps();
+      };
+      $scope.reviewSteps = [];
+      $scope.updateReviewSteps = function (wizard) {
+        $scope.reviewSteps = wizard.getReviewSteps();
+      };
+    }],
+    link: function ($scope, $element, $attrs, wizard) {
+      $scope.$watch('shown', function (value) {
+        if (value) {
+          $scope.updateReviewSteps(wizard);
+        }
+      });
+    }
+  };
+});
+;/**
+ * @ngdoc directive
+ * @name patternfly.wizard.directive:pfWizardStep
+ *
+ * @description
+ * Directive for rendering a Wizard step.  Each step can stand alone or have substeps.  This directive can only be used as a child of pf-wizard.
+ *
+ * @param {string} stepTitle The step title displayed in the header and used for the review screen when displayed
+ * @param {string} stepId  Sets the text identifier of the step
+ * @param {number} stepPriority  This sets the priority of this wizard step relative to other wizard steps.  They should be numbered sequentially in the order they should be viewed.
+ * @param {boolean} substeps Sets whether this step has substeps
+ * @param {boolean=} nextEnabled Sets whether the next button should be enabled when this step is first displayed
+ * @param {boolean=} prevEnabled Sets whether the back button should be enabled when this step is first displayed
+ * @param {string=} nextTooltip The text to display as a tooltip on the next button
+ * @param {string=} prevTooltip The text to display as a tooltip on the back button
+ * @param {boolean=} wzDisabled Disables the wizard when this page is shown
+ * @param {boolean} okToNavAway Sets whether or not it's ok for the user to leave this page
+ * @param {boolean} allowClickNav Sets whether the user can click on the numeric step indicators to navigate directly to this step
+ * @param {string=} description The step description (optional)
+ * @param {object} wizardData Data passed to the step that is shared by the entire wizard
+ * @param {function()=} onShow The function called when the wizard shows this step
+ * @param {boolean=} showReview Indicates whether review information should be displayed for this step when the review step is reached
+ * @param {boolean=} showReviewDetails Indicators whether the review information should be expanded by default when the review step is reached
+ * @param {string=} reviewTemplate The template that should be used for the review details screen
+ */
+angular.module('patternfly.wizard').directive('pfWizardStep', function () {
+  'use strict';
+  return {
+    restrict: 'A',
+    transclude: true,
+    scope: {
+      stepTitle: '@',
+      stepId: '@',
+      stepPriority: '@',
+      substeps: '=?',
+      nextEnabled: '=?',
+      prevEnabled: '=?',
+      nextTooltip: '=?',
+      prevTooltip: '=?',
+      disabled: '@?wzDisabled',
+      okToNavAway: '=?',
+      allowClickNav: '=?',
+      description: '@',
+      wizardData: '=',
+      onShow: '=?',
+      showReview: '@?',
+      showReviewDetails: '@?',
+      reviewTemplate: '@?'
+    },
+    require: '^pf-wizard',
+    templateUrl: 'wizard/wizard-step.html',
+    controller: ["$scope", "$timeout", function ($scope, $timeout) {
+      var firstRun = true;
+
+      var stepIdx = function (step) {
+        var idx = 0;
+        var res = -1;
+        angular.forEach($scope.getEnabledSteps(), function (currStep) {
+          if (currStep === step) {
+            res = idx;
+          }
+          idx++;
+        });
+        return res;
+      };
+
+      var unselectAll = function () {
+        //traverse steps array and set each "selected" property to false
+        angular.forEach($scope.getEnabledSteps(), function (step) {
+          step.selected = false;
+        });
+        //set selectedStep variable to null
+        $scope.selectedStep = null;
+      };
+
+      var watchSelectedStep = function () {
+        // Remove any previous watchers
+        if ($scope.nextStepEnabledWatcher) {
+          $scope.nextStepEnabledWatcher();
+        }
+        if ($scope.nextStepTooltipWatcher) {
+          $scope.nextStepTooltipWatcher();
+        }
+        if ($scope.prevStepEnabledWatcher) {
+          $scope.prevStepEnabledWatcher();
+        }
+        if ($scope.prevStepTooltipWatcher) {
+          $scope.prevStepTooltipWatcher();
+        }
+
+        // Add watchers for the selected step
+        $scope.nextStepEnabledWatcher = $scope.$watch('selectedStep.nextEnabled', function (value) {
+          $scope.nextEnabled = value;
+        });
+        $scope.nextStepTooltipWatcher = $scope.$watch('selectedStep.nextTooltip', function (value) {
+          $scope.nextTooltip = value;
+        });
+        $scope.prevStepEnabledWatcher = $scope.$watch('selectedStep.prevEnabled', function (value) {
+          $scope.prevEnabled = value;
+        });
+        $scope.prevStepTooltipWatcher = $scope.$watch('selectedStep.prevTooltip', function (value) {
+          $scope.prevTooltip = value;
+        });
+      };
+
+      var stepByTitle = function (titleToFind) {
+        var foundStep = null;
+        angular.forEach($scope.getEnabledSteps(), function (step) {
+          if (step.stepTitle === titleToFind) {
+            foundStep = step;
+          }
+        });
+        return foundStep;
+      };
+
+      $scope.steps = [];
+      $scope.context = {};
+      this.context = $scope.context;
+
+      if (angular.isUndefined($scope.nextEnabled)) {
+        $scope.nextEnabled = true;
+      }
+      if (angular.isUndefined($scope.prevEnabled)) {
+        $scope.prevEnabled = true;
+      }
+      if (angular.isUndefined($scope.showReview)) {
+        $scope.showReview = false;
+      }
+      if (angular.isUndefined($scope.showReviewDetails)) {
+        $scope.showReviewDetails = false;
+      }
+      if (angular.isUndefined($scope.stepPriority)) {
+        $scope.stepPriority = 999;
+      } else {
+        $scope.stepPriority = parseInt($scope.stepPriority);
+      }
+      if (angular.isUndefined($scope.okToNavAway)) {
+        $scope.okToNavAway = true;
+      }
+      if (angular.isUndefined($scope.allowClickNav)) {
+        $scope.allowClickNav = true;
+      }
+
+      $scope.getEnabledSteps = function () {
+        return $scope.steps.filter(function (step) {
+          return step.disabled !== 'true';
+        });
+      };
+
+      $scope.getReviewSteps = function () {
+        var reviewSteps = $scope.getEnabledSteps().filter(function (step) {
+          return !angular.isUndefined(step.reviewTemplate);
+        });
+        return reviewSteps;
+      };
+
+      $scope.resetNav = function () {
+        $scope.goTo($scope.getEnabledSteps()[0]);
+      };
+
+      $scope.currentStepNumber = function () {
+        //retreive current step number
+        return stepIdx($scope.selectedStep) + 1;
+      };
+
+      $scope.getStepNumber = function (step) {
+        return stepIdx(step) + 1;
+      };
+
+      $scope.isNextEnabled = function () {
+        var enabled = angular.isUndefined($scope.nextEnabled) || $scope.nextEnabled;
+        if ($scope.substeps) {
+          angular.forEach($scope.getEnabledSteps(), function (step) {
+            enabled = enabled && step.nextEnabled;
+          });
+        }
+        return enabled;
+      };
+
+      $scope.isPrevEnabled = function () {
+        var enabled = angular.isUndefined($scope.prevEnabled) || $scope.prevEnabled;
+        if ($scope.substeps) {
+          angular.forEach($scope.getEnabledSteps(), function (step) {
+            enabled = enabled && step.prevEnabled;
+          });
+        }
+        return enabled;
+      };
+
+      $scope.getStepDisplayNumber = function (step) {
+        return $scope.pageNumber +  String.fromCharCode(65 + stepIdx(step)) + ".";
+      };
+
+      //watching changes to currentStep
+      $scope.$watch('currentStep', function (step) {
+        //checking to make sure currentStep is truthy value
+        if (!step) {
+          return;
+        }
+
+        //setting stepTitle equal to current step title or default title
+        if ($scope.selectedStep && $scope.selectedStep.stepTitle !== $scope.currentStep) {
+          $scope.goTo(stepByTitle($scope.currentStep));
+        }
+      });
+
+      //watching steps array length and editMode value, if edit module is undefined or null the nothing is done
+      //if edit mode is truthy, then all steps are marked as completed
+      $scope.$watch('[editMode, steps.length]', function () {
+        var editMode = $scope.editMode;
+        if (angular.isUndefined(editMode) || (editMode === null)) {
+          return;
+        }
+
+        if (editMode) {
+          angular.forEach($scope.getEnabledSteps(), function (step) {
+            step.completed = true;
+          });
+        } else {
+          angular.forEach($scope.getEnabledSteps(), function (step, stepIndex) {
+            if (stepIndex >= $scope.currentStepNumber() - 1) {
+              step.completed = false;
+            }
+          });
+        }
+      }, true);
+
+      $scope.prevStepsComplete = function (nextStep) {
+        var nextIdx = stepIdx(nextStep);
+        var complete = true;
+        angular.forEach($scope.getEnabledSteps(), function (step, stepIndex) {
+          if (stepIndex <  nextIdx) {
+            complete = complete && step.nextEnabled;
+          }
+        });
+        return complete;
+      };
+
+      $scope.goTo = function (step) {
+        if ($scope.wizard.isWizardDone() || !step.okToNavAway || step === $scope.selectedStep) {
+          return;
+        }
+
+        if (firstRun || ($scope.getStepNumber(step) < $scope.currentStepNumber() && $scope.selectedStep.prevEnabled) || $scope.prevStepsComplete(step)) {
+          unselectAll();
+
+          $scope.selectedStep = step;
+          if (step) {
+            step.selected = true;
+
+            if (angular.isFunction ($scope.selectedStep.onShow)) {
+              $scope.selectedStep.onShow();
+            }
+
+            watchSelectedStep();
+            $scope.currentStep = step.stepTitle;
+
+            //emit event upwards with data on goTo() invocation
+            if ($scope.selected) {
+              $scope.$emit('wizard:stepChanged', {step: step, index: stepIdx(step)});
+              firstRun = false;
+            }
+          }
+          $scope.wizard.updateSubStepNumber (stepIdx($scope.selectedStep));
+        }
+      };
+
+      $scope.stepClick = function (step) {
+        if (step.allowClickNav) {
+          $scope.goTo(step);
+        }
+      };
+
+      $scope.$watch('selected', function () {
+        if ($scope.selected && $scope.selectedStep) {
+          $scope.$emit('wizard:stepChanged', {step: $scope.selectedStep, index: stepIdx( $scope.selectedStep)});
+        }
+      });
+
+      this.addStep = function (step) {
+        // Insert the step into step array
+        var insertBefore = _.find($scope.steps, function (nextStep) {
+          return nextStep.stepPriority > step.stepPriority;
+        });
+        if (insertBefore) {
+          $scope.steps.splice($scope.steps.indexOf(insertBefore), 0, step);
+        } else {
+          $scope.steps.push(step);
+        }
+      };
+
+      this.currentStepTitle = function () {
+        return $scope.selectedStep.stepTitle;
+      };
+
+      this.currentStepDescription = function () {
+        return $scope.selectedStep.description;
+      };
+
+      this.currentStep = function () {
+        return $scope.selectedStep;
+      };
+
+      this.totalStepCount = function () {
+        return $scope.getEnabledSteps().length;
+      };
+
+      this.getEnabledSteps = function () {
+        return $scope.getEnabledSteps();
+      };
+
+      //Access to current step number from outside
+      this.currentStepNumber = function () {
+        return $scope.currentStepNumber();
+      };
+
+      // Allow access to any step
+      this.goTo = function (step) {
+        var enabledSteps = $scope.getEnabledSteps();
+        var stepTo;
+
+        if (angular.isNumber(step)) {
+          stepTo = enabledSteps[step];
+        } else {
+          stepTo = stepByTitle(step);
+        }
+
+        $scope.goTo(stepTo);
+      };
+
+      // Method used for next button within step
+      $scope.next = function (callback) {
+        var enabledSteps = $scope.getEnabledSteps();
+
+        // Save the step  you were on when next() was invoked
+        var index = stepIdx($scope.selectedStep);
+
+        // Check if callback is a function
+        if (angular.isFunction (callback)) {
+          if (callback($scope.selectedStep)) {
+            if (index === enabledSteps.length - 1) {
+              return false;
+            }
+            // Go to the next step
+            $scope.goTo(enabledSteps[index + 1]);
+            return true;
+          }
+          return true;
+        }
+
+        // Completed property set on scope which is used to add class/remove class from progress bar
+        $scope.selectedStep.completed = true;
+
+        // Check to see if this is the last step.  If it is next behaves the same as finish()
+        if (index === enabledSteps.length - 1) {
+          return false;
+        }
+        // Go to the next step
+        $scope.goTo(enabledSteps[index + 1]);
+        return true;
+      };
+
+      $scope.previous = function (callback) {
+        var index = stepIdx($scope.selectedStep);
+        var goPrev = false;
+
+        // Check if callback is a function
+        if (angular.isFunction (callback)) {
+          if (callback($scope.selectedStep)) {
+            if (index !== 0) {
+              $scope.goTo($scope.getEnabledSteps()[index - 1]);
+              goPrev = true;
+            }
+          }
+        }
+
+        return goPrev;
+      };
+
+      if ($scope.substeps && !$scope.onShow) {
+        $scope.onShow = function () {
+          $timeout(function () {
+            if (!$scope.selectedStep) {
+              $scope.goTo($scope.getEnabledSteps()[0]);
+            }
+          }, 10);
+        };
+      }
+    }],
+    link: function ($scope, $element, $attrs, wizard) {
+      $scope.$watch($attrs.ngShow, function (value) {
+        $scope.pageNumber = wizard.getStepNumber($scope);
+      });
+      $scope.title =  $scope.stepTitle;
+      $scope.contentStyle = wizard.contentStyle;
+      wizard.addStep($scope);
+      $scope.wizard = wizard;
+    }
+  };
+});
+;/** @ngdoc directive
+* @name patternfly.wizard.directive:pfWizardSubstep
+*
+* @description
+* Directive for rendering a Wizard substep.  Each substep must be a child of a pf-wizardstep in a pf-wizard directive.
+*
+* @param {string} stepTitle The step title displayed in the header and used for the review screen when displayed
+* @param {string} stepId  Sets the text identifier of the step
+* @param {number} stepPriority  This sets the priority of this wizard step relative to other wizard steps.  They should be numbered sequentially in the order they should be viewed.
+* @param {boolean=} nextEnabled Sets whether the next button should be enabled when this step is first displayed
+* @param {boolean=} prevEnabled Sets whether the back button should be enabled when this step is first displayed
+* @param {boolean=} wzDisabled Disables the wizard when this page is shown
+* @param {boolean} okToNavAway Sets whether or not it's ok for the user to leave this page
+* @param {boolean=} allowClickNav Sets whether the user can click on the numeric step indicators to navigate directly to this step
+* @param {string=} description The step description
+* @param {object} wizardData Data passed to the step that is shared by the entire wizard
+* @param {function()=} onShow The function called when the wizard shows this step
+* @param {boolean=} showReviewDetails Indicators whether the review information should be expanded by default when the review step is reached
+* @param {string=} reviewTemplate The template that should be used for the review details screen
+*/
+angular.module('patternfly.wizard').directive('pfWizardSubstep', function () {
+  'use strict';
+
+  return {
+    restrict: 'A',
+    transclude: true,
+    scope: {
+      stepTitle: '@',
+      stepId: '@',
+      stepPriority: '@',
+      nextEnabled: '=?',
+      prevEnabled: '=?',
+      okToNavAway: '=?',
+      allowClickNav: '=?',
+      disabled: '@?wzDisabled',
+      description: '@',
+      wizardData: '=',
+      onShow: '=?',
+      showReviewDetails: '@?',
+      reviewTemplate: '@?'
+    },
+    require: '^pf-wizard-step',
+    templateUrl: 'wizard/wizard-substep.html',
+    controller: ["$scope", function ($scope) {
+      if (angular.isUndefined($scope.nextEnabled)) {
+        $scope.nextEnabled = true;
+      }
+      if (angular.isUndefined($scope.prevEnabled)) {
+        $scope.prevEnabled = true;
+      }
+      if (angular.isUndefined($scope.showReviewDetails)) {
+        $scope.showReviewDetails = false;
+      }
+      if (angular.isUndefined($scope.stepPriority)) {
+        $scope.stepPriority = 999;
+      } else {
+        $scope.stepPriority = parseInt($scope.stepPriority);
+      }
+      if (angular.isUndefined($scope.okToNavAway)) {
+        $scope.okToNavAway = true;
+      }
+      if (angular.isUndefined($scope.allowClickNav)) {
+        $scope.allowClickNav = true;
+      }
+
+      $scope.isPrevEnabled = function () {
+        var enabled = angular.isUndefined($scope.prevEnabled) || $scope.prevEnabled;
+        if ($scope.substeps) {
+          angular.forEach($scope.getEnabledSteps(), function (step) {
+            enabled = enabled && step.prevEnabled;
+          });
+        }
+        return enabled;
+      };
+
+    }],
+    link: function ($scope, $element, $attrs, step) {
+      $scope.title = $scope.stepTitle;
+      step.addStep($scope);
+    }
+  };
+});
 ;angular.module('patternfly.card').run(['$templateCache', function($templateCache) {
   'use strict';
 
@@ -8502,12 +10122,12 @@ angular.module('patternfly.views').directive('pfListView', ["$timeout", "$window
 
 
   $templateCache.put('card/basic/card-filter.html',
-    "<button type=button class=\"btn btn-default dropdown-toggle\" data-toggle=dropdown aria-haspopup=true aria-expanded=false>{{currentFilter.label}} <span class=caret></span></button><ul class=\"dropdown-menu dropdown-menu-right\" role=menu><li ng-repeat=\"item in filter.filters\" ng-class=\"{'selected': item === currentFilter}\"><a role=menuitem tabindex=-1 ng-click=filterCallBackFn(item)>{{item.label}}</a></li></ul>"
+    "<button type=button uib-dropdown-toggle class=\"btn btn-default\">{{currentFilter.label}} <span class=caret></span></button><ul uib-dropdown-menu class=dropdown-menu-right role=menu><li ng-repeat=\"item in filter.filters\" ng-class=\"{'selected': item === currentFilter}\"><a role=menuitem tabindex=-1 ng-click=filterCallBackFn(item)>{{item.label}}</a></li></ul>"
   );
 
 
   $templateCache.put('card/basic/card.html',
-    "<div ng-class=\"showTopBorder === 'true' ? 'card-pf card-pf-accented' : 'card-pf'\"><div ng-if=showHeader() ng-class=\"shouldShowTitlesSeparator ? 'card-pf-heading' : 'card-pf-heading-no-bottom'\"><div ng-if=showFilterInHeader() class=\"dropdown card-pf-time-frame-filter\"><div ng-include=\"'card/basic/card-filter.html'\"></div></div><h2 class=card-pf-title>{{headTitle}}</h2></div><span ng-if=subTitle class=card-pf-subtitle>{{subTitle}}</span><div class=card-pf-body><div ng-transclude></div></div><div ng-if=footer class=card-pf-footer><div ng-if=showFilterInFooter() class=\"dropdown card-pf-time-frame-filter\"><div ng-include=\"'card/basic/card-filter.html'\"></div></div><p><a ng-if=footer.href href={{footer.href}} ng-class=\"{'card-pf-link-with-icon':footer.iconClass,'card-pf-link':!footer.iconClass}\"><span ng-if=footer.iconClass class=\"{{footer.iconClass}} card-pf-footer-text\"></span> <span ng-if=footer.text class=card-pf-footer-text>{{footer.text}}</span></a> <a ng-if=\"footer.callBackFn && !footer.href\" ng-click=footerCallBackFn() ng-class=\"{'card-pf-link-with-icon':footer.iconClass,'card-pf-link':!footer.iconClass}\"><span class=\"{{footer.iconClass}} card-pf-footer-text\" ng-if=footer.iconClass></span> <span class=card-pf-footer-text ng-if=footer.text>{{footer.text}}</span></a> <span ng-if=\"!footer.href && !footer.callBackFn\"><span ng-if=footer.iconClass class=\"{{footer.iconClass}} card-pf-footer-text\" ng-class=\"{'card-pf-link-with-icon':footer.iconClass,'card-pf-link':!footer.iconClass}\"></span> <span ng-if=footer.text class=card-pf-footer-text>{{footer.text}}</span></span></p></div></div>"
+    "<div ng-class=\"showTopBorder === 'true' ? 'card-pf card-pf-accented' : 'card-pf'\"><div ng-if=showHeader() ng-class=\"shouldShowTitlesSeparator ? 'card-pf-heading' : 'card-pf-heading-no-bottom'\"><div ng-if=showFilterInHeader() uib-dropdown class=card-pf-time-frame-filter><div ng-include=\"'card/basic/card-filter.html'\"></div></div><h2 class=card-pf-title>{{headTitle}}</h2></div><span ng-if=subTitle class=card-pf-subtitle>{{subTitle}}</span><div class=card-pf-body><div ng-transclude></div></div><div ng-if=footer class=card-pf-footer><div ng-if=showFilterInFooter() uib-dropdown class=card-pf-time-frame-filter><div ng-include=\"'card/basic/card-filter.html'\"></div></div><p><a ng-if=footer.href href={{footer.href}} ng-class=\"{'card-pf-link-with-icon':footer.iconClass,'card-pf-link':!footer.iconClass}\"><span ng-if=footer.iconClass class=\"{{footer.iconClass}} card-pf-footer-text\"></span> <span ng-if=footer.text class=card-pf-footer-text>{{footer.text}}</span></a> <a ng-if=\"footer.callBackFn && !footer.href\" ng-click=footerCallBackFn() ng-class=\"{'card-pf-link-with-icon':footer.iconClass,'card-pf-link':!footer.iconClass}\"><span class=\"{{footer.iconClass}} card-pf-footer-text\" ng-if=footer.iconClass></span> <span class=card-pf-footer-text ng-if=footer.text>{{footer.text}}</span></a> <span ng-if=\"!footer.href && !footer.callBackFn\"><span ng-if=footer.iconClass class=\"{{footer.iconClass}} card-pf-footer-text\" ng-class=\"{'card-pf-link-with-icon':footer.iconClass,'card-pf-link':!footer.iconClass}\"></span> <span ng-if=footer.text class=card-pf-footer-text>{{footer.text}}</span></span></p></div></div>"
   );
 
 }]);
@@ -8550,8 +10170,8 @@ angular.module('patternfly.views').directive('pfListView', ["$timeout", "$window
 
 
   $templateCache.put('charts/utilization-bar/utilization-bar-chart.html',
-    "<div class=utilization-bar-chart-pf ng-class=\"{'data-unavailable-pf': chartData.dataAvailable === false}\"><span ng-if=\"!layout || layout.type === 'regular'\"><div ng-if=chartTitle class=progress-description>{{chartTitle}}</div><div class=\"progress progress-label-top-right\" ng-if=\"chartData.dataAvailable !== false\"><div class=progress-bar role=progressbar ng-class=\"{'animate': animate,\n" +
-    "           'progress-bar-success': isOk, 'progress-bar-danger': isError, 'progress-bar-warning': isWarn}\" ng-style=\"{width:chartData.percentageUsed + '%'}\" tooltip=\"{{chartData.percentageUsed}}% Used\"><span ng-if=chartFooter ng-bind-html=chartFooter></span> <span ng-if=\"!chartFooter && (!footerLabelFormat || footerLabelFormat === 'actual')\"><strong>{{chartData.used}} of {{chartData.total}} {{units}}</strong> Used</span> <span ng-if=\"!chartFooter && footerLabelFormat === 'percent'\"><strong>{{chartData.percentageUsed}}%</strong> Used</span></div><div class=\"progress-bar progress-bar-remaining\" role=progressbar aria-valuenow=5 aria-valuemin=0 aria-valuemax=100 ng-style=\"{width:(100 - chartData.percentageUsed) + '%'}\" tooltip=\"{{100 - chartData.percentageUsed}}% Available\"></div></div></span> <span ng-if=\"layout && layout.type === 'inline'\"><div class=\"progress-container progress-description-left progress-label-right\" ng-style=\"{'padding-left':layout.titleLabelWidth, 'padding-right':layout.footerLabelWidth}\"><div ng-if=chartTitle class=progress-description ng-style=\"{'max-width':layout.titleLabelWidth}\">{{chartTitle}}</div><div class=progress ng-if=\"chartData.dataAvailable !== false\"><div class=progress-bar role=progressbar aria-valuenow=25 aria-valuemin=0 aria-valuemax=100 ng-class=\"{'animate': animate, 'progress-bar-success': isOk, 'progress-bar-danger': isError, 'progress-bar-warning': isWarn}\" ng-style=\"{width:chartData.percentageUsed + '%'}\" tooltip=\"{{chartData.percentageUsed}}% Used\"><span ng-if=chartFooter ng-bind-html=chartFooter></span> <span ng-if=\"(!chartFooter) && (!footerLabelFormat || footerLabelFormat === 'actual')\" ng-style=\"{'max-width':layout.footerLabelWidth}\"><strong>{{chartData.used}} {{units}}</strong> Used</span> <span ng-if=\"(!chartFooter) && footerLabelFormat === 'percent'\" ng-style=\"{'max-width':layout.footerLabelWidth}\"><strong>{{chartData.percentageUsed}}%</strong> Used</span></div><div class=\"progress-bar progress-bar-remaining\" role=progressbar aria-valuenow=75 aria-valuemin=0 aria-valuemax=100 ng-style=\"{width:(100 - chartData.percentageUsed) + '%'}\" tooltip=\"{{100 - chartData.percentageUsed}}% Available\"></div></div></div></span><div pf-empty-chart ng-if=\"chartData.dataAvailable === false\" chart-height=45></div></div>"
+    "<div class=utilization-bar-chart-pf ng-class=\"{'data-unavailable-pf': chartData.dataAvailable === false}\"><span ng-if=\"!layout || layout.type === 'regular'\"><div ng-if=chartTitle class=progress-description>{{chartTitle}}</div><div class=\"progress progress-label-top-right\" ng-if=\"chartData.dataAvailable !== false\"><div class=progress-bar aria-valuenow={{chartData.percentageUsed}} aria-valuemin=0 aria-valuemax=100 ng-class=\"{'animate': animate,\n" +
+    "           'progress-bar-success': isOk, 'progress-bar-danger': isError, 'progress-bar-warning': isWarn}\" ng-style=\"{width:chartData.percentageUsed + '%'}\" uib-tooltip=\"{{chartData.percentageUsed}}% Used\"><span ng-if=chartFooter ng-bind-html=chartFooter></span> <span ng-if=\"!chartFooter && (!footerLabelFormat || footerLabelFormat === 'actual')\"><strong>{{chartData.used}} of {{chartData.total}} {{units}}</strong> Used</span> <span ng-if=\"!chartFooter && footerLabelFormat === 'percent'\"><strong>{{chartData.percentageUsed}}%</strong> Used</span></div><div class=\"progress-bar progress-bar-remaining\" ng-style=\"{width:(100 - chartData.percentageUsed) + '%'}\" uib-tooltip=\"{{100 - chartData.percentageUsed}}% Available\"></div></div></span> <span ng-if=\"layout && layout.type === 'inline'\"><div class=\"progress-container progress-description-left progress-label-right\" ng-style=\"{'padding-left':layout.titleLabelWidth, 'padding-right':layout.footerLabelWidth}\"><div ng-if=chartTitle class=progress-description ng-style=\"{'max-width':layout.titleLabelWidth}\">{{chartTitle}}</div><div class=progress ng-if=\"chartData.dataAvailable !== false\"><div class=progress-bar aria-valuenow={{chartData.percentageUsed}} aria-valuemin=0 aria-valuemax=100 ng-class=\"{'animate': animate, 'progress-bar-success': isOk, 'progress-bar-danger': isError, 'progress-bar-warning': isWarn}\" ng-style=\"{width:chartData.percentageUsed + '%'}\" uib-tooltip=\"{{chartData.percentageUsed}}% Used\"><span ng-if=chartFooter ng-bind-html=chartFooter></span> <span ng-if=\"(!chartFooter) && (!footerLabelFormat || footerLabelFormat === 'actual')\" ng-style=\"{'max-width':layout.footerLabelWidth}\"><strong>{{chartData.used}} {{units}}</strong> Used</span> <span ng-if=\"(!chartFooter) && footerLabelFormat === 'percent'\" ng-style=\"{'max-width':layout.footerLabelWidth}\"><strong>{{chartData.percentageUsed}}%</strong> Used</span></div><div class=\"progress-bar progress-bar-remaining\" ng-style=\"{width:(100 - chartData.percentageUsed) + '%'}\" uib-tooltip=\"{{100 - chartData.percentageUsed}}% Available\"></div></div></div></span><div pf-empty-chart ng-if=\"chartData.dataAvailable === false\" chart-height=45></div></div>"
   );
 
 
@@ -8564,7 +10184,7 @@ angular.module('patternfly.views').directive('pfListView', ["$timeout", "$window
   'use strict';
 
   $templateCache.put('filters/filter-fields.html',
-    "<div class=\"filter-pf filter-fields\"><form><div class=\"form-group toolbar-pf-filter\"><div class=input-group><div dropdown class=input-group-btn><button dropdown-toggle type=button class=\"btn btn-default dropdown-toggle filter-fields\" aria-haspopup=true aria-expanded=false tooltip=\"Filter by\" tooltip-placement=top>{{currentField.title}} <span class=caret></span></button><ul class=dropdown-menu><li ng-repeat=\"item in config.fields\"><a class=filter-field role=menuitem tabindex=-1 ng-click=selectField(item)>{{item.title}}</a></li></ul></div><div ng-if=\"currentField.filterType !== 'select'\"><input class=form-control type={{currentField.filterType}} ng-model=config.currentValue placeholder={{currentField.placeholder}} ng-keypress=\"onValueKeyPress($event)\"></div><div ng-if=\"currentField.filterType === 'select'\"><select pf-select class=\"form-control filter-select\" id=currentValue ng-model=config.currentValue ng-options=\"filterValue for filterValue in currentField.filterValues\" ng-change=selectValue(config.currentValue)><option value=\"\">{{currentField.placeholder}}</option></select></div></div></div></form></div>"
+    "<div class=\"filter-pf filter-fields\"><div class=\"input-group form-group\"><div uib-dropdown class=input-group-btn><button uib-dropdown-toggle type=button class=\"btn btn-default filter-fields\" uib-tooltip=\"Filter by\" tooltip-placement=top>{{currentField.title}} <span class=caret></span></button><ul uib-dropdown-menu><li ng-repeat=\"item in config.fields\"><a class=filter-field role=menuitem tabindex=-1 ng-click=selectField(item)>{{item.title}}</a></li></ul></div><div ng-if=\"currentField.filterType !== 'select'\"><input class=form-control type={{currentField.filterType}} ng-model=config.currentValue placeholder={{currentField.placeholder}} ng-keypress=\"onValueKeyPress($event)\"></div><div ng-if=\"currentField.filterType === 'select'\"><select pf-select class=\"form-control filter-select\" id=currentValue ng-model=config.currentValue ng-options=\"filterValue for filterValue in currentField.filterValues\" ng-change=selectValue(config.currentValue)><option value=\"\">{{currentField.placeholder}}</option></select></div></div></div>"
   );
 
 
@@ -8583,6 +10203,11 @@ angular.module('patternfly.views').directive('pfListView', ["$timeout", "$window
 
   $templateCache.put('form/datepicker/datepicker.html',
     "<div class=\"input-group date\"><input class=\"form-control\"> <span class=input-group-addon><span class=\"fa fa-calendar\"></span></span></div>"
+  );
+
+
+  $templateCache.put('form/datetimepicker/datetimepicker.html',
+    "<div class=\"input-group time-picker-pf\"><input class=\"form-control\"> <span class=\"input-group-addon btn btn-default\"><span class=\"fa fa-clock-o\"></span></span></div>"
   );
 
 
@@ -8646,10 +10271,10 @@ angular.module('patternfly.views').directive('pfListView', ["$timeout", "$window
     "                       'active': item.isActive,\n" +
     "                       'is-hover': item.isHover,\n" +
     "                       'mobile-nav-item-pf': item.isMobileItem && showMobileSecondary,\n" +
-    "                       'mobile-secondary-item-pf': item.isMobileItem && showMobileTertiary}\" ng-mouseenter=handlePrimaryHover(item) ng-mouseleave=handlePrimaryUnHover(item)><a ng-click=\"handlePrimaryClick(item, $event)\"><span class={{item.iconClass}} ng-if=item.iconClass ng-class=\"{hidden: hiddenIcons}\" tooltip-append-to-body=true tooltip-enable={{navCollapsed}} tooltip-placement=bottom tooltip={{item.title}} tooltip-class=nav-pf-vertical-tooltip></span> <span class=list-group-item-value>{{item.title}}</span><div ng-if=\"showBadges && item.badges\" class=badge-container-pf><div class=\"badge {{badge.badgeClass}}\" ng-repeat=\"badge in item.badges\" tooltip-append-to-body=true tooltip-placement=right tooltip={{badge.tooltip}}><span ng-if=\"badge.count && badge.iconClass\" class={{badge.iconClass}}></span> <span ng-if=badge.count>{{badge.count}}</span></div></div></a><div ng-if=\"item.children && item.children.length > 0\" class=nav-pf-secondary-nav><div class=nav-item-pf-header><a class=secondary-collapse-toggle-pf ng-click=\"collapseSecondaryNav(item, $event)\" ng-class=\"{'collapsed': item.secondaryCollapsed}\"></a> <span>{{item.title}}</span></div><ul class=list-group><li ng-repeat=\"secondaryItem in item.children\" class=list-group-item ng-class=\"{'tertiary-nav-item-pf': secondaryItem.children && secondaryItem.children.length > 0,\n" +
+    "                       'mobile-secondary-item-pf': item.isMobileItem && showMobileTertiary}\" ng-mouseenter=handlePrimaryHover(item) ng-mouseleave=handlePrimaryUnHover(item)><a ng-click=\"handlePrimaryClick(item, $event)\"><span class={{item.iconClass}} ng-if=item.iconClass ng-class=\"{hidden: hiddenIcons}\" uib-tooltip={{item.title}} tooltip-append-to-body=true tooltip-enable={{navCollapsed}} tooltip-placement=bottom tooltip-class=nav-pf-vertical-tooltip></span> <span class=list-group-item-value>{{item.title}}</span><div ng-if=\"showBadges && item.badges\" class=badge-container-pf><div class=\"badge {{badge.badgeClass}}\" ng-repeat=\"badge in item.badges\" uib-tooltip={{badge.tooltip}} tooltip-append-to-body=true tooltip-placement=right><span ng-if=\"badge.count && badge.iconClass\" class={{badge.iconClass}}></span> <span ng-if=badge.count>{{badge.count}}</span></div></div></a><div ng-if=\"item.children && item.children.length > 0\" class=nav-pf-secondary-nav><div class=nav-item-pf-header><a class=secondary-collapse-toggle-pf ng-click=\"collapseSecondaryNav(item, $event)\" ng-class=\"{'collapsed': item.secondaryCollapsed}\"></a> <span>{{item.title}}</span></div><ul class=list-group><li ng-repeat=\"secondaryItem in item.children\" class=list-group-item ng-class=\"{'tertiary-nav-item-pf': secondaryItem.children && secondaryItem.children.length > 0,\n" +
     "                             'active': secondaryItem.isActive,\n" +
     "                             'is-hover': secondaryItem.isHover,\n" +
-    "                             'mobile-nav-item-pf': secondaryItem.isMobileItem}\" ng-mouseenter=handleSecondaryHover(secondaryItem) ng-mouseleave=handleSecondaryUnHover(secondaryItem)><a ng-click=\"handleSecondaryClick(item, secondaryItem, $event)\"><span class=list-group-item-value>{{secondaryItem.title}}</span><div ng-if=\"showBadges && secondaryItem.badges\" class=badge-container-pf><div class=\"badge {{badge.badgeClass}}\" ng-repeat=\"badge in secondaryItem.badges\" tooltip-append-to-body=true tooltip-placement=right tooltip={{badge.tooltip}}><span ng-if=\"badge.count && badge.iconClass\" class={{badge.iconClass}}></span> <span ng-if=badge.count>{{badge.count}}</span></div></div></a><div ng-if=\"secondaryItem.children && secondaryItem.children.length > 0\" class=nav-pf-tertiary-nav><div class=nav-item-pf-header><a class=tertiary-collapse-toggle-pf ng-click=\"collapseTertiaryNav(secondaryItem, $event)\" ng-class=\"{'collapsed': secondaryItem.tertiaryCollapsed}\"></a> <span>{{secondaryItem.title}}</span></div><ul class=list-group><li ng-repeat=\"tertiaryItem in secondaryItem.children\" class=list-group-item ng-class=\"{'active': tertiaryItem.isActive}\"><a ng-click=\"handleTertiaryClick(item, secondaryItem, tertiaryItem, $event)\"><span class=list-group-item-value>{{tertiaryItem.title}}</span><div ng-if=\"showBadges && tertiaryItem.badges\" class=badge-container-pf><div class=\"badge {{badge.badgeClass}}\" ng-repeat=\"badge in tertiaryItem.badges\" tooltip-append-to-body=true tooltip-placement=right tooltip={{badge.tooltip}}><span ng-if=\"badge.count && badge.iconClass\" class={{badge.iconClass}}></span> <span ng-if=badge.count>{{badge.count}}</span></div></div></a></li></ul></div></li></ul></div></li></ul></div></nav></div>"
+    "                             'mobile-nav-item-pf': secondaryItem.isMobileItem}\" ng-mouseenter=handleSecondaryHover(secondaryItem) ng-mouseleave=handleSecondaryUnHover(secondaryItem)><a ng-click=\"handleSecondaryClick(item, secondaryItem, $event)\"><span class=list-group-item-value>{{secondaryItem.title}}</span><div ng-if=\"showBadges && secondaryItem.badges\" class=badge-container-pf><div class=\"badge {{badge.badgeClass}}\" ng-repeat=\"badge in secondaryItem.badges\" uib-tooltip={{badge.tooltip}} tooltip-append-to-body=true tooltip-placement=right><span ng-if=\"badge.count && badge.iconClass\" class={{badge.iconClass}}></span> <span ng-if=badge.count>{{badge.count}}</span></div></div></a><div ng-if=\"secondaryItem.children && secondaryItem.children.length > 0\" class=nav-pf-tertiary-nav><div class=nav-item-pf-header><a class=tertiary-collapse-toggle-pf ng-click=\"collapseTertiaryNav(secondaryItem, $event)\" ng-class=\"{'collapsed': secondaryItem.tertiaryCollapsed}\"></a> <span>{{secondaryItem.title}}</span></div><ul class=list-group><li ng-repeat=\"tertiaryItem in secondaryItem.children\" class=list-group-item ng-class=\"{'active': tertiaryItem.isActive}\"><a ng-click=\"handleTertiaryClick(item, secondaryItem, tertiaryItem, $event)\"><span class=list-group-item-value>{{tertiaryItem.title}}</span><div ng-if=\"showBadges && tertiaryItem.badges\" class=badge-container-pf><div class=\"badge {{badge.badgeClass}}\" ng-repeat=\"badge in tertiaryItem.badges\" uib-tooltip={{badge.tooltip}} tooltip-append-to-body=true tooltip-placement=right><span ng-if=\"badge.count && badge.iconClass\" class={{badge.iconClass}}></span> <span ng-if=badge.count>{{badge.count}}</span></div></div></a></li></ul></div></li></ul></div></li></ul></div></nav></div>"
   );
 
 }]);
@@ -8682,7 +10307,7 @@ angular.module('patternfly.views').directive('pfListView', ["$timeout", "$window
 
 
   $templateCache.put('notification/toast-notification.html',
-    "<div class=\"toast-pf alert alert-{{notificationType}}\" ng-class=\"{'alert-dismissable': showCloseButton}\" ng-mouseenter=handleEnter() ng-mouseleave=handleLeave()><div class=\"dropdown pull-right dropdown-kebab-pf\" ng-if=\"menuActions && menuActions.length > 0\"><button class=\"btn btn-link dropdown-toggle\" type=button id=dropdownKebabRight data-toggle=dropdown aria-haspopup=true aria-expanded=true><span class=\"fa fa-ellipsis-v\"></span></button><ul class=\"dropdown-menu dropdown-menu-right\" aria-labelledby=dropdownKebabRight><li ng-repeat=\"menuAction in menuActions\" role=\"{{menuAction.isSeparator === true ? 'separator' : 'menuitem'}}\" ng-class=\"{'divider': menuAction.isSeparator === true, 'disabled': menuAction.isDisabled === true}\"><a ng-if=\"menuAction.isSeparator !== true\" class=secondary-action title={{menuAction.title}} ng-click=handleMenuAction(menuAction)>{{menuAction.name}}</a></li></ul></div><button ng-if=showCloseButton type=button class=close aria-hidden=true ng-click=handleClose()><span class=\"pficon pficon-close\"></span></button><div class=\"pull-right toast-pf-action\" ng-if=actionTitle><a ng-click=handleAction()>{{actionTitle}}</a></div><span class=\"pficon pficon-ok\" ng-if=\"notificationType === 'success'\"></span> <span class=\"pficon pficon-info\" ng-if=\"notificationType === 'info'\"></span> <span class=\"pficon pficon-error-circle-o\" ng-if=\"notificationType === 'danger'\"></span> <span class=\"pficon pficon-warning-triangle-o\" ng-if=\"notificationType === 'warning'\"></span> <span ng-if=header><strong>{{header}}</strong> {{message}}</span> <span ng-if=!header>{{message}}</span></div>"
+    "<div class=\"toast-pf alert alert-{{notificationType}}\" ng-class=\"{'alert-dismissable': showCloseButton}\" ng-mouseenter=handleEnter() ng-mouseleave=handleLeave()><div uib-dropdown class=\"pull-right dropdown-kebab-pf\" ng-if=\"menuActions && menuActions.length > 0\"><button uib-dropdown-toggle class=\"btn btn-link\" type=button id=dropdownKebabRight><span class=\"fa fa-ellipsis-v\"></span></button><ul uib-dropdown-menu class=dropdown-menu-right aria-labelledby=dropdownKebabRight><li ng-repeat=\"menuAction in menuActions\" role=\"{{menuAction.isSeparator === true ? 'separator' : 'menuitem'}}\" ng-class=\"{'divider': menuAction.isSeparator === true, 'disabled': menuAction.isDisabled === true}\"><a ng-if=\"menuAction.isSeparator !== true\" class=secondary-action title={{menuAction.title}} ng-click=handleMenuAction(menuAction)>{{menuAction.name}}</a></li></ul></div><button ng-if=showCloseButton type=button class=close aria-hidden=true ng-click=handleClose()><span class=\"pficon pficon-close\"></span></button><div class=\"pull-right toast-pf-action\" ng-if=actionTitle><a ng-click=handleAction()>{{actionTitle}}</a></div><span class=\"pficon pficon-ok\" ng-if=\"notificationType === 'success'\"></span> <span class=\"pficon pficon-info\" ng-if=\"notificationType === 'info'\"></span> <span class=\"pficon pficon-error-circle-o\" ng-if=\"notificationType === 'danger'\"></span> <span class=\"pficon pficon-warning-triangle-o\" ng-if=\"notificationType === 'warning'\"></span> <span ng-if=header><strong>{{header}}</strong> {{message}}</span> <span ng-if=!header>{{message}}</span></div>"
   );
 
 }]);
@@ -8690,7 +10315,7 @@ angular.module('patternfly.views').directive('pfListView', ["$timeout", "$window
   'use strict';
 
   $templateCache.put('sort/sort.html',
-    "<div class=sort-pf><form><div class=form-group><div class=\"dropdown btn-group\"><button type=button class=\"btn btn-default dropdown-toggle\" data-toggle=dropdown aria-haspopup=true aria-expanded=false>{{config.currentField.title}} <span class=caret></span></button><ul class=dropdown-menu><li ng-repeat=\"item in config.fields\" ng-class=\"{'selected': item === config.currentField}\"><a href=javascript:void(0); class=sort-field role=menuitem tabindex=-1 ng-click=selectField(item)>{{item.title}}</a></li></ul></div><button class=\"btn btn-link\" type=button ng-click=changeDirection()><span class=sort-direction ng-class=getSortIconClass()></span></button></div></form></div>"
+    "<div class=sort-pf><div uib-dropdown class=btn-group><button uib-dropdown-toggle type=button class=\"btn btn-default\">{{config.currentField.title}} <span class=caret></span></button><ul uib-dropdown-menu><li ng-repeat=\"item in config.fields\" ng-class=\"{'selected': item === config.currentField}\"><a href=javascript:void(0); class=sort-field role=menuitem tabindex=-1 ng-click=selectField(item)>{{item.title}}</a></li></ul></div><button class=\"btn btn-link\" type=button ng-click=changeDirection()><span class=sort-direction ng-class=getSortIconClass()></span></button></div>"
   );
 
 }]);
@@ -8698,10 +10323,10 @@ angular.module('patternfly.views').directive('pfListView', ["$timeout", "$window
   'use strict';
 
   $templateCache.put('toolbars/toolbar.html',
-    "<div class=container-fluid><div class=\"row toolbar-pf\"><div class=col-sm-12><form class=toolbar-pf-actions ng-class=\"{'no-filter-results': !config.filterConfig}\"><div pf-filter-fields id={{filterDomId}}_fields config=config.filterConfig ng-if=config.filterConfig add-filter-fn=addFilter></div><div pf-sort id={{sortDomId}} config=config.sortConfig ng-if=config.sortConfig></div><div class=\"form-group toolbar-actions\" ng-if=\"config.actionsConfig &&\n" +
+    "<div class=container-fluid><div class=\"row toolbar-pf\"><div class=col-sm-12><form class=toolbar-pf-actions ng-class=\"{'no-filter-results': !config.filterConfig}\"><div class=\"form-group toolbar-apf-filter\"><div pf-filter-fields id={{filterDomId}}_fields config=config.filterConfig ng-if=config.filterConfig add-filter-fn=addFilter></div></div><div class=form-group><div pf-sort id={{sortDomId}} config=config.sortConfig ng-if=config.sortConfig></div></div><div class=\"form-group toolbar-actions\" ng-if=\"config.actionsConfig &&\n" +
     "                   ((config.actionsConfig.primaryActions && config.actionsConfig.primaryActions.length > 0) ||\n" +
     "                    (config.actionsConfig.moreActions && config.actionsConfig.moreActions.length > 0) ||\n" +
-    "                    config.actionsConfig.actionsInclude)\"><button class=\"btn btn-default primary-action\" type=button ng-repeat=\"action in config.actionsConfig.primaryActions\" title={{action.title}} ng-click=handleAction(action) ng-disabled=\"action.isDisabled === true\">{{action.name}}</button><div ng-if=config.actionsConfig.actionsInclude pf-transclude class=toolbar-pf-include-actions ng-tranclude=actions></div><div class=\"dropdown dropdown-kebab-pf\" ng-if=\"config.actionsConfig.moreActions && config.actionsConfig.moreActions.length > 0\"><button class=\"btn btn-link dropdown-toggle\" type=button id={{filterDomId}}_kebab data-toggle=dropdown aria-haspopup=true aria-expanded=true><span class=\"fa fa-ellipsis-v\"></span></button><ul class=dropdown-menu aria-labelledby=dropdownKebab><li ng-repeat=\"action in config.actionsConfig.moreActions\" role=\"{{action.isSeparator === true ? 'separator' : 'menuitem'}}\" ng-class=\"{'divider': action.isSeparator === true, 'disabled': action.isDisabled === true}\"><a ng-if=\"action.isSeparator !== true\" class=secondary-action title={{action.title}} ng-click=handleAction(action)>{{action.name}}</a></li></ul></div></div><div class=\"toolbar-pf-view-selector pull-right\" ng-if=\"config.viewsConfig && config.viewsConfig.views\"><ul class=list-inline><li ng-repeat=\"view in config.viewsConfig.viewsList\" ng-class=\"{'active': isViewSelected(view.id), 'disabled': checkViewDisabled(view)}\" title={{view.title}}><a><i class=\"view-selector {{view.iconClass}}\" ng-click=viewSelected(view.id)></i></a></li></ul></div></form><div pf-filter-results id={{filterDomId}_results} config=config.filterConfig ng-if=config.filterConfig></div></div><!-- /col --></div><!-- /row --></div><!-- /container -->"
+    "                    config.actionsConfig.actionsInclude)\"><button class=\"btn btn-default primary-action\" type=button ng-repeat=\"action in config.actionsConfig.primaryActions\" title={{action.title}} ng-click=handleAction(action) ng-disabled=\"action.isDisabled === true\">{{action.name}}</button><div ng-if=config.actionsConfig.actionsInclude pf-transclude class=toolbar-pf-include-actions ng-tranclude=actions></div><div uib-dropdown class=dropdown-kebab-pf ng-if=\"config.actionsConfig.moreActions && config.actionsConfig.moreActions.length > 0\"><button uib-dropdown-toggle class=\"btn btn-link\" type=button id={{filterDomId}}_kebab><span class=\"fa fa-ellipsis-v\"></span></button><ul uib-dropdown-menu aria-labelledby=dropdownKebab><li ng-repeat=\"action in config.actionsConfig.moreActions\" role=\"{{action.isSeparator === true ? 'separator' : 'menuitem'}}\" ng-class=\"{'divider': action.isSeparator === true, 'disabled': action.isDisabled === true}\"><a ng-if=\"action.isSeparator !== true\" class=secondary-action title={{action.title}} ng-click=handleAction(action)>{{action.name}}</a></li></ul></div></div><div class=toolbar-pf-action-right><div class=\"form-group toolbar-pf-view-selector\" ng-if=\"config.viewsConfig && config.viewsConfig.views\"><button ng-repeat=\"view in config.viewsConfig.viewsList\" class=\"btn btn-link\" ng-class=\"{'active': isViewSelected(view.id), 'disabled': checkViewDisabled(view)}\" title={{view.title}} ng-click=viewSelected(view.id)><i class={{view.iconClass}}></i></button></div></div></form><div pf-filter-results id={{filterDomId}_results} config=config.filterConfig ng-if=config.filterConfig></div></div><!-- /col --></div><!-- /row --></div><!-- /container -->"
   );
 
 }]);
@@ -8714,7 +10339,30 @@ angular.module('patternfly.views').directive('pfListView', ["$timeout", "$window
 
 
   $templateCache.put('views/listview/list-view.html',
-    "<div class=list-view-pf><div class=list-group-item ng-repeat=\"item in items track by $index\" ng-class=\"{'pf-selectable': selectItems, 'active': isSelected(item), 'disabled': checkDisabled(item)}\"><div class=list-view-pf-checkbox ng-if=config.showSelectBox><input type=checkbox value=item.selected ng-model=item.selected ng-disabled=checkDisabled(item) ng-change=\"checkBoxChange(item)\"></div><div class=list-view-pf-actions ng-if=\"(actionButtons && actionButtons.length > 0) || (menuActions && menuActions.length > 0)\"><button class=\"btn btn-default\" ng-repeat=\"actionButton in actionButtons\" title=actionButton.title ng-class=\"{'disabled' : checkDisabled(item) || !enableButtonForItem(actionButton, item)}\" ng-click=\"handleButtonAction(actionButton, item)\">{{actionButton.name}}</button><div class=\"{{dropdownClass}} pull-right dropdown-kebab-pf\" id=kebab_{{$index}} ng-if=\"menuActions && menuActions.length > 0\"><button class=\"btn btn-link dropdown-toggle\" type=button id=dropdownKebabRight_{{$index}} ng-class=\"{'disabled': checkDisabled(item)}\" ng-click=\"setupActions(item, $event)\" data-toggle=dropdown aria-haspopup=true aria-expanded=true><span class=\"fa fa-ellipsis-v\"></span></button><ul class=\"dropdown-menu dropdown-menu-right {{$index}}\" aria-labelledby=dropdownKebabRight_{{$index}}><li ng-repeat=\"menuAction in menuActions\" ng-if=\"menuAction.isVisible !== false\" role=\"{{menuAction.isSeparator === true ? 'separator' : 'menuitem'}}\" ng-class=\"{'divider': (menuAction.isSeparator === true), 'disabled': (menuAction.isDisabled === true)}\"><a ng-if=\"menuAction.isSeparator !== true\" title={{menuAction.title}} ng-click=\"handleMenuAction(menuAction, item)\">{{menuAction.name}}</a></li></ul></div></div><div pf-transclude=parent class=list-view-pf-main-info ng-click=\"itemClick($event, item)\" ng-dblclick=\"dblClick($event, item)\"></div></div></div>"
+    "<div class=\"list-group list-view-pf\"><div class=\"list-group-item {{item.rowClass}}\" ng-repeat=\"item in items track by $index\" ng-class=\"{'pf-selectable': selectItems, 'active': isSelected(item), 'disabled': checkDisabled(item), 'list-view-pf-expand-active': item.isExpanded}\"><div class=list-group-item-header><div class=list-view-pf-expand ng-if=config.useExpandingRows><span class=\"fa fa-angle-right\" ng-show=!item.disableRowExpansion ng-click=toggleItemExpansion(item) ng-class=\"{'fa-angle-down': item.isExpanded}\"></span> <span class=pf-expand-placeholder ng-show=item.disableRowExpansion></span></div><div class=list-view-pf-checkbox ng-if=config.showSelectBox><input type=checkbox value=item.selected ng-model=item.selected ng-disabled=checkDisabled(item) ng-change=\"checkBoxChange(item)\"></div><div class=list-view-pf-actions ng-if=\"(actionButtons && actionButtons.length > 0) || (menuActions && menuActions.length > 0)\"><button class=\"btn btn-default {{actionButton.class}}\" ng-repeat=\"actionButton in actionButtons\" title={{actionButton.title}} ng-class=\"{'disabled' : checkDisabled(item) || !enableButtonForItem(actionButton, item)}\" ng-click=\"handleButtonAction(actionButton, item)\"><div ng-if=actionButton.include class=actionButton.includeClass ng-include src=actionButton.include></div><span ng-if=!actionButton.include>{{actionButton.name}}</span></button><div uib-dropdown class=\"{{dropdownClass}} pull-right dropdown-kebab-pf {{getMenuClassForItem(item)}} {{hideMenuForItem(item) ? 'invisible' : ''}}\" id=kebab_{{$index}} ng-if=\"menuActions && menuActions.length > 0\"><button uib-dropdown-toggle class=\"btn btn-link\" type=button id=dropdownKebabRight_{{$index}} ng-class=\"{'disabled': checkDisabled(item)}\" ng-click=\"setupActions(item, $event)\"><span class=\"fa fa-ellipsis-v\"></span></button><ul uib-dropdown-menu class=\"dropdown-menu dropdown-menu-right {{$index}}\" aria-labelledby=dropdownKebabRight_{{$index}}><li ng-repeat=\"menuAction in menuActions\" ng-if=\"menuAction.isVisible !== false\" role=\"{{menuAction.isSeparator === true ? 'separator' : 'menuitem'}}\" ng-class=\"{'divider': (menuAction.isSeparator === true), 'disabled': (menuAction.isDisabled === true)}\"><a ng-if=\"menuAction.isSeparator !== true\" title={{menuAction.title}} ng-click=\"handleMenuAction(menuAction, item)\">{{menuAction.name}}</a></li></ul></div></div><div pf-transclude=parent class=list-view-pf-main-info ng-click=\"itemClick($event, item)\" ng-dblclick=\"dblClick($event, item)\"></div></div><div class=\"list-group-item-container container-fluid\" ng-transclude=expandedContent ng-if=\"config.useExpandingRows && item.isExpanded\"></div></div></div>"
+  );
+
+}]);
+;angular.module('patternfly.wizard').run(['$templateCache', function($templateCache) {
+  'use strict';
+
+  $templateCache.put('wizard/wizard-review-page.html',
+    "<div class=wizard-pf-review-page><div class=wizard-pf-review-steps><ul class=list-group><li class=list-group-item ng-repeat=\"reviewStep in reviewSteps track by $index\"><a class=apf-form-collapse ng-class=\"{'collapsed': !reviewStep.showReviewDetails}\" ng-click=toggleShowReviewDetails(reviewStep)>{{reviewStep.stepTitle}}</a><div class=wizard-pf-review-substeps ng-class=\"{'collapse': !reviewStep.showReviewDetails}\"><ul class=list-group ng-if=reviewStep.substeps><li class=list-group-item ng-repeat=\"substep in reviewStep.getReviewSteps()\"><a class=apf-form-collapse ng-class=\"{'collapsed': !substep.showReviewDetails}\" ng-click=toggleShowReviewDetails(substep)><span class=wizard-pf-substep-number>{{getSubStepNumber(reviewStep, substep)}}</span> <span class=wizard-pf-substep-title>{{substep.stepTitle}}</span></a><div class=wizard-pf-review-content ng-class=\"{'collapse': !substep.showReviewDetails}\"><div ng-include=substep.reviewTemplate></div></div></li></ul><div class=wizard-pf-review-content ng-if=reviewStep.reviewTemplate ng-class=\"{'collapse': !reviewStep.showReviewDetails}\"><div ng-include=reviewStep.reviewTemplate></div></div></div></li></ul></div></div>"
+  );
+
+
+  $templateCache.put('wizard/wizard-step.html',
+    "<section ng-show=selected ng-class=\"{current: selected, done: completed}\"><div class=wizard-pf-sidebar ng-style=contentStyle ng-if=\"substeps === true\"><ul class=list-group><li class=list-group-item ng-class=\"{active: step.selected}\" ng-repeat=\"step in getEnabledSteps()\"><a ng-click=stepClick(step)><span class=wizard-pf-substep-number>{{getStepDisplayNumber(step)}}</span> <span class=wizard-pf-substep-title>{{step.title}}</span></a></li></ul></div><div class=wizard-pf-main ng-class=\"{'wizard-pf-singlestep': !substeps}\" ng-style=contentStyle><div class=wizard-pf-contents ng-transclude></div></div></section>"
+  );
+
+
+  $templateCache.put('wizard/wizard-substep.html',
+    "<subsection ng-show=selected ng-class=\"{current: selected, done: completed}\" class=wizard-pf-step ng-transclude></subsection>"
+  );
+
+
+  $templateCache.put('wizard/wizard.html',
+    "<div><div class=modal-header><button type=button class=\"close wizard-pf-dismiss\" aria-label=Close ng-click=onCancel() ng-if=!embedInPage><span aria-hidden=true>&times;</span></button><dt class=modal-title>{{title}}</dt></div><div class=\"modal-body wizard-pf-body clearfix\"><!-- step area --><div class=wizard-pf-steps ng-class=\"{'invisible': !wizardReady}\"><ul class=wizard-pf-steps-indicator ng-if=!hideIndicators ng-class=\"{'invisible': !wizardReady}\"><li class=wizard-pf-step ng-class=\"{active: step.selected}\" ng-repeat=\"step in getEnabledSteps()\" data-tabgroup=\"{{$index }}\"><a ng-click=stepClick(step)><span class=wizard-pf-step-number>{{$index + 1}}</span><span class=wizard-pf-step-title>{{step.title}}</span></a></li></ul></div><!-- loading wizard placeholder --><div ng-if=!wizardReady class=wizard-pf-main style=\"margin-left: 0px\"><div class=\"wizard-pf-loading blank-slate-pf\"><div class=\"spinner spinner-lg blank-slate-pf-icon\"></div><h3 class=blank-slate-pf-main-action>{{loadingWizardTitle}}</h3><p class=blank-slate-pf-secondary-action>{{loadingSecondaryInformation}}</p></div></div><div class=wizard-pf-position-override ng-transclude></div></div><div class=\"modal-footer wizard-pf-footer wizard-pf-position-override\" ng-class=\"{'wizard-pf-footer-inline': embedInPage}\"><button pf-wiz-cancel class=\"btn btn-default btn-cancel wizard-pf-cancel\" ng-disabled=wizardDone ng-click=onCancel() ng-if=!embedInPage>{{cancelTitle}}</button><div class=tooltip-wrapper uib-tooltip={{prevTooltip}} tooltip-placement=left><button id=backButton pf-wiz-previous class=\"btn btn-default\" ng-disabled=\"!wizardReady || wizardDone || !prevEnabled || firstStep\" callback=backCallback><span class=\"i fa fa-angular-left\"></span> {{backTitle}}</button></div><div class=tooltip-wrapper uib-tooltip={{nextTooltip}} tooltip-placement=left><button id=nextButton pf-wiz-next class=\"btn btn-primary wizard-pf-next\" ng-disabled=\"!wizardReady || !nextEnabled\" callback=nextCallback>{{nextTitle}} <span class=\"i fa fa-angular-right\"></span></button></div><button pf-wiz-cancel class=\"btn btn-default btn-cancel wizard-pf-cancel wizard-pf-cancel-inline\" ng-disabled=wizardDone ng-click=onCancel() ng-if=embedInPage>{{cancelTitle}}</button></div></div>"
   );
 
 }]);

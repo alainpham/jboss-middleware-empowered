@@ -50,6 +50,28 @@ public class StatisticsRecord implements Serializable{
 		
 	}
 	
+	public List<List<Serializable>> getFrequencyAsArray(){
+		//function formatted for c3.js
+		List<List<Serializable>> frequencyList = new ArrayList<List<Serializable>>();
+		List<Serializable> xVals  = new ArrayList<Serializable>();
+		List<Serializable> yVals  = new ArrayList<Serializable>();
+		frequencyList.add(xVals);
+		frequencyList.add(yVals);
+		xVals.add("x");
+		yVals.add("y");
+		
+		for (Entry<BigDecimal, Integer> entry : frequencyData.entrySet()) {
+			Map<String,BigDecimal> m = new HashMap<String,BigDecimal>();
+			xVals.add(entry.getKey());
+			yVals.add(new BigDecimal(entry.getValue()));
+		}
+		
+		
+		return frequencyList;
+
+	}
+	
+	
 	public BigDecimal getExpectedPercentile() {
 		return expectedPercentile;
 	}

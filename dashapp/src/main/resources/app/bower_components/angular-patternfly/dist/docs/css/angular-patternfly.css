@@ -307,15 +307,15 @@
   color: #999999;
 }
 
-.sort-pf .form-group .btn-link {
-  color: #222;
+.sort-pf .btn-link {
+  color: #252525;
   font-size: 16px;
   line-height: 1;
   padding: 4px 0;
   margin-left: 10px;
 }
 
-.sort-pf .form-group .btn-link:hover {
+.sort-pf .btn-link:hover {
   color: #0099d3;
 }
 
@@ -323,6 +323,12 @@
   background-color: #0099d3 !important;
   border-color: #0076b7 !important;
   color: #fff !important;
+}
+
+@media (min-width: 768px) {
+  .toolbar-pf-actions .toolbar-apf-filter {
+    padding-left: 0;
+  }
 }
 
 .toolbar-pf-actions .toolbar-pf-view-selector a {
@@ -340,6 +346,11 @@
 .toolbar-pf-include-actions {
   display: inline-block;
   margin: 0 5px;
+}
+
+.dropdown-kebab-pf.invisible {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Utilization bar chart - Animate load */
@@ -425,4 +436,37 @@ accordion > .panel-group .panel-open .panel-title > a:before {
 }
 .toast-pf .dropdown-menu > li > a {
   cursor: pointer;
+}
+
+.wizard-pf-footer .tooltip-wrapper {
+  border: none;
+  box-shadow: none;
+  display: inline-block;
+  margin-left: 5px;
+  padding: 0;
+  text-align: center;
+}
+
+.wizard-pf-footer .tooltip-wrapper .btn[disabled] {
+  pointer-events: none;
+}
+
+.wizard-pf-singlestep {
+  margin-left: 0;
+}
+
+.wizard-pf-position-override {
+  position: relative;
+}
+
+.wizard-pf-footer-inline {
+  text-align: left;
+}
+
+.wizard-pf-cancel-inline {
+  margin-left: 25px;
+}
+
+.pf-expand-placeholder {
+  margin-right: 10px;
 }

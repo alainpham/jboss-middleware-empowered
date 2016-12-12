@@ -15,7 +15,8 @@
     "tests"
   ],
   "dependencies": {
-    "angular": "^1.5.8",
-    "angular-patternfly": "^3.11.0"
+    "angular": "^1.6.0",
+    "angular-patternfly": "^3.16.0",
+    "angular-route": "^1.6.0"
   }
 }

@@ -2,9 +2,9 @@
 
 ---
 
-![Bower version](https://img.shields.io/bower/v/bootstrap-treeview.svg?style=flat)
-[![npm version](https://img.shields.io/npm/v/bootstrap-treeview.svg?style=flat)](https://www.npmjs.com/package/bootstrap-treeview)
-[![Build Status](https://img.shields.io/travis/jonmiles/bootstrap-treeview/master.svg?style=flat)](https://travis-ci.org/jonmiles/bootstrap-treeview)
+![Bower version](https://img.shields.io/bower/v/patternfly-bootstrap-treeview.svg?style=flat)
+[![npm version](https://img.shields.io/npm/v/patternfly-bootstrap-treeview.svg?style=flat)](https://www.npmjs.com/package/patternfly-bootstrap-treeview)
+[![Build Status](https://img.shields.io/travis/patternfly/patternfly-bootstrap-treeview/master.svg?style=flat)](https://travis-ci.org/patternfly/patternfly-bootstrap-treeview)
 
 A simple and elegant solution to displaying hierarchical tree structures (i.e. a Tree View) while leveraging the best that Twitter Bootstrap has to offer.
 
@@ -412,6 +412,11 @@ Sets the icon to be as a partially checked checkbox, used in conjunction with sh
 Boolean.  Default: false
 
 Whether or not a node can be unselected without another node first being selected.
+
+#### allowReselect
+Boolean.  Default: false
+
+Whether or not a node can be reselected when its already selected, used in conjunction with preventUnselect.
 
 #### selectedIcon
 String, class name(s).  Default: "glyphicon glyphicon-stop" as defined by [Bootstrap Glyphicons](http://getbootstrap.com/components/#glyphicons)

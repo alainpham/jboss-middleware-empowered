@@ -1,6 +1,6 @@
 {
   "name": "patternfly",
-  "version": "3.11.0",
+  "version": "3.16.0",
   "author": "Red Hat",
   "license": "Apache-2.0",
   "dependencies": {
@@ -13,6 +13,7 @@
     "connect-livereload": "~0.5.4",
     "grunt": "~1.0.1",
     "grunt-contrib-connect": "~1.0.2",
+    "grunt-contrib-concat": "^1.0.0",
     "grunt-contrib-copy": "^1.0.0",
     "grunt-contrib-cssmin": "^1.0.1",
     "grunt-contrib-less": "^1.3.0",
@@ -24,6 +25,7 @@
     "grunt-jekyll": "^0.4.4",
     "grunt-karma": "^2.0.0",
     "grunt-postcss": "^0.8.0",
+    "grunt-run": "^0.6.0",
     "grunt-stylelint": "^0.6.0",
     "jasmine-core": "^2.4.1",
     "jasmine-jquery": "^2.1.1",
@@ -34,7 +36,9 @@
     "karma-phantomjs-launcher": "^1.0.1",
     "matchdep": "~1.0.1",
     "nsp": "^2.6.1",
-    "pixrem": "^3.0.1"
+    "patternfly-eng-release": "~3.16.0",
+    "pixrem": "^3.0.1",
+    "table": "3.7.9"
   },
   "optionalDependencies": {
     "bootstrap-datepicker": "~1.6.4",
@@ -46,13 +50,14 @@
     "datatables": "~1.10.12",
     "datatables.net-colreorder": "~1.3.2",
     "datatables.net-colreorder-bs": "~1.3.2",
+    "datatables.net-select": "~1.2.0",
     "drmonty-datatables-colvis": "~1.1.2",
     "eonasdan-bootstrap-datetimepicker": "~4.15.35",
     "google-code-prettify": "~1.0.5",
     "jquery-match-height": "~0.7.0",
     "moment": "~2.14.1",
     "patternfly-bootstrap-combobox": "~1.1.7",
-    "patternfly-bootstrap-treeview": "~2.0.0"
+    "patternfly-bootstrap-treeview": "~2.1.0"
   },
   "scripts": {
     "test": "./node_modules/karma/bin/karma start"
