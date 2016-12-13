@@ -59,7 +59,7 @@
 
 		<route id="receiveMetricsAMQJson">
 			<from id="receiveMetricsAMQJsonStarter" uri="activemq:queue:app.stats.trades" />
-			<log id="logBody" message="metadata verifed ${body}" />
+			<log id="logBodyContent" message="metadata verifed ${body}" />
 			<unmarshal id="parseJson">
 				<json id="tradeProcessingDurationJson" library="Jackson"
 					unmarshalTypeName="com.redhat.empowered.specific.model.trading.TradeProcessingDuration" />
@@ -71,10 +71,7 @@
 			<setProperty propertyName="originalBean">
 				<simple>${body}</simple>
 			</setProperty>
-			<marshal>
-				<serialization />
-			</marshal>
-			<to id="toStoreIndicator" uri="activemq:queue:app.stats.storeindicator" />
+			<to id="toStoreIndicator" uri="direct:storeIndicator" />
 			<setBody>
 				<method ref="genericObjectFactory" method="createIndicatorRecord(${property.originalBean})"></method>
 			</setBody>
@@ -83,5 +80,26 @@
 			</marshal>
 			<to id="toUpdateStat" uri="activemq:queue:app.stats.updatestats" />
 		</route>
+
+		<!-- store the raw POJO -->
+		<route id="storeIndicatorRoute">
+			<from id="storeIndicatorStarter" uri="direct:storeIndicator" />
+			<log id="logBody" message="trying to store pojo of type ${body.class}" />
+<!-- 			<setHeader headerName="CamelInfinispanKey">
+				<simple>${body.uid}</simple>
+			</setHeader>
+			<setHeader headerName="CamelInfinispanValue">
+				<simple>${body}</simple>
+			</setHeader>
+			<setHeader headerName="CamelInfinispanCacheName">
+				<constant>event</constant>
+			</setHeader>
+			<setHeader headerName="CamelInfinispanOperation">
+				<constant>CamelInfinispanOperationPut</constant>
+			</setHeader> -->
+		</route>
+		
+		
+
 	</camelContext>
 </beans>

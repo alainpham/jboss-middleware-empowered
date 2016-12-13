@@ -18,15 +18,27 @@
 	</bean>
 
 	<amq:broker useJmx="true" persistent="false">
-
 		<amq:transportConnectors>
 			<amq:transportConnector uri="tcp://0.0.0.0:61616" />
 		</amq:transportConnectors>
 	</amq:broker>
 
+	<!-- Internal InfiniSpan cache -->
 	<bean id="cacheManager" class="org.infinispan.manager.DefaultCacheManager"
 		init-method="start" destroy-method="stop">
 		<constructor-arg type="java.lang.String" value="infinispan.xml" />
+	</bean>
+
+	<!-- Embedded data base -->
+	<bean id="h2db" class="org.h2.tools.Server" factory-method="createTcpServer"
+		init-method="start" destroy-method="stop">
+		<constructor-arg value="-tcp,-tcpAllowOthers,-tcpPort,8643,-baseDir,./h2dbstore" />
+	</bean>
+	
+	<bean id="h2Server" class="org.h2.tools.Server"
+		factory-method="createWebServer" depends-on="h2db"
+		init-method="start" lazy-init="false">
+		<constructor-arg value="-web,-webPort,11111,-baseDir,./h2dbstore" />
 	</bean>
 
 	<bean id="activemq" class="org.apache.activemq.camel.component.ActiveMQComponent">
@@ -92,27 +104,7 @@
 			</setBody>
 		</route>
 
-		<!-- store the raw POJO -->
-		<route id="receiveEventAsPojo">
-			<from id="receiveEventAsPojoStarter" uri="activemq:queue:app.stats.storeindicator" />
-			<unmarshal>
-				<serialization />
-			</unmarshal>
-			<log id="logBody" message="trying to store pojo of type ${body.class}" />
-			<setHeader headerName="CamelInfinispanKey">
-				<simple>${body.uid}</simple>
-			</setHeader>
-			<setHeader headerName="CamelInfinispanValue">
-				<simple>${body}</simple>
-			</setHeader>
-			<setHeader headerName="CamelInfinispanCacheName">
-				<constant>event</constant>
-			</setHeader>
-			<setHeader headerName="CamelInfinispanOperation">
-				<constant>CamelInfinispanOperationPut</constant>
-			</setHeader>
-			<to ref="datagrid" />
-		</route>
+
 
 		<!-- calculating metrics -->
 		<route id="calculateMetrics">
@@ -122,7 +114,7 @@
 				<serialization />
 			</unmarshal>
 			<log message="trying to process pojo of type ${body.class} - ${body.value}"></log>
-	
+
 			<setHeader headerName="eventTimestmp">
 				<simple>${body.timestmp}</simple>
 			</setHeader>

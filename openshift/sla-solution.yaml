@@ -27,7 +27,7 @@ parameters:
   required: true
 - description: Maven build command
   name: MAVEN_ARGS
-  value: -DMVN_MIRROR=http://172.17.0.1:8081/nexus/content/groups/public/ -gs settings.xml install -DskipTests -e
+  value: -DMVN_MIRROR=http://172.17.0.1:8081/nexus/content/groups/public/ -gs settings.xml package -DskipTests -e
   required: true
 objects:
 - apiVersion: v1 ############Build for event-collector###################
@@ -61,7 +61,7 @@ objects:
         - name: MAVEN_OPTS
           value: -Xmx1024m
         - name: MAVEN_ARGS_APPEND
-          value: 
+          value: -am -pl event-collector
         - name: ARTIFACT_DIR
           value: event-collector/target/
         from:
@@ -112,6 +112,12 @@ objects:
              protocol: TCP
            - containerPort: 61616
              name: amq-svc
+             protocol: TCP
+           - containerPort: 8643
+             name: h2db
+             protocol: TCP
+           - containerPort: 11111
+             name: h2web
              protocol: TCP
            resources: {}
     triggers:
@@ -171,13 +177,38 @@ objects:
       port: 61616
       protocol: TCP
       targetPort: 61616
+    - name: h2db-tcp
+      port: 8643
+      protocol: TCP
+      targetPort: 8643
+    - name: h2web-tcp
+      port: 11111
+      protocol: TCP
+      targetPort: 11111
     selector:
       deploymentconfig: event-collector
     sessionAffinity: None
     type: ClusterIP
   status:
     loadBalancer: {}
-    
+
+- apiVersion: v1 #Route for event-collector
+  kind: Route
+  metadata:
+    creationTimestamp: null
+    labels:
+      app: event-collector
+      solution: sla-solution
+    name: event-collector
+  spec:
+    to:
+      kind: Service
+      name: event-collector
+    port:
+      targetPort: h2web-tcp
+  status: {}
+      
+
 - apiVersion: v1 ############Build for trade-service###################
   kind: BuildConfig
   metadata:
@@ -209,7 +240,7 @@ objects:
         - name: MAVEN_OPTS
           value: -Xmx1024m
         - name: MAVEN_ARGS_APPEND
-          value: 
+          value: -am -pl trade-service
         - name: ARTIFACT_DIR
           value: trade-service/target/
         from:
@@ -326,21 +357,21 @@ objects:
   status:
     loadBalancer: {}
     
-- apiVersion: v1 ############Build for dashboard###################
+- apiVersion: v1 ############Build for dashapp###################
   kind: BuildConfig
   metadata:
     annotations:
       openshift.io/generated-by: OpenShiftWebConsole
     creationTimestamp: null
     labels:
-      app: dashboard
+      app: dashapp
       solution: sla-solution
-    name: dashboard
+    name: dashapp
   spec:
     output:
       to:
         kind: ImageStreamTag
-        name: dashboard:${SOLUTION_VERSION}
+        name: dashapp:${SOLUTION_VERSION}
     postCommit: {}
     resources: {}
     runPolicy: Serial
@@ -357,9 +388,9 @@ objects:
         - name: MAVEN_OPTS
           value: -Xmx1024m
         - name: MAVEN_ARGS_APPEND
-          value: 
+          value: -am -pl dashapp
         - name: ARTIFACT_DIR
-          value: dashboard/target/
+          value: dashapp/target/
         from:
           kind: ImageStreamTag
           name: fis-java-openshift:${FIS_VERSION}
@@ -371,33 +402,33 @@ objects:
     - type: ConfigChange
   status: {}
   
-- apiVersion: v1 #deploy for dashboard
+- apiVersion: v1 #deploy for dashapp
   kind: DeploymentConfig
   metadata:
     annotations:
       openshift.io/generated-by: OpenShiftWebConsole
     creationTimestamp: null
     labels:
-      app: dashboard
+      app: dashapp
       solution: sla-solution
-    name: dashboard
+    name: dashapp
   spec:
     replicas: 1
     selector:
-      deploymentconfig: dashboard
+      deploymentconfig: dashapp
     strategy:
       resources: {}
     template:
       metadata:
         creationTimestamp: null
         labels:
-          app: dashboard
+          app: dashapp
           solution: sla-solution
-          deploymentconfig: dashboard
+          deploymentconfig: dashapp
       spec:
         containers:
-        -  name: dashboard
-           image: dashboard
+        -  name: dashapp
+           image: dashapp
            imagePullPolicy: Always
            volumeMounts:
            - name: config-volume
@@ -420,43 +451,43 @@ objects:
       imageChangeParams:
         automatic: true
         containerNames:
-        - "dashboard"
+        - "dashapp"
         from:
           kind: ImageStreamTag
-          name: dashboard:${SOLUTION_VERSION}
+          name: dashapp:${SOLUTION_VERSION}
   status: {}
   
-- apiVersion: v1 #ImageStream for dashboard
+- apiVersion: v1 #ImageStream for dashapp
   kind: ImageStream
   metadata:
     annotations:
       openshift.io/generated-by: OpenShiftWebConsole
     creationTimestamp: null
     labels:
-      app: dashboard
+      app: dashapp
       solution: sla-solution
-    name: dashboard
+    name: dashapp
   spec:
     tags:
     - annotations: null
       from:
         kind: DockerImage
-        name: dashboard:${SOLUTION_VERSION}
+        name: dashapp:${SOLUTION_VERSION}
       generation: null
       importPolicy: {}
       name: latest
   status: {}
   
-- apiVersion: v1 #Service for dashboard
+- apiVersion: v1 #Service for dashapp
   kind: Service
   metadata:
     annotations:
       openshift.io/generated-by: OpenShiftWebConsole
     creationTimestamp: null
     labels:
-      app: dashboard
+      app: dashapp
       solution: sla-solution
-    name: dashboard
+    name: dashapp
   spec:
     ports:
     - name: jolokia-tcp
@@ -468,24 +499,24 @@ objects:
       protocol: TCP
       targetPort: 8888
     selector:
-      deploymentconfig: dashboard
+      deploymentconfig: dashapp
     sessionAffinity: None
     type: ClusterIP
   status:
     loadBalancer: {}
     
-- apiVersion: v1 #Route for dashboard
+- apiVersion: v1 #Route for dashapp
   kind: Route
   metadata:
     creationTimestamp: null
     labels:
-      app: dashboard
+      app: dashapp
       solution: sla-solution
-    name: dashboard
+    name: dashapp
   spec:
     to:
       kind: Service
-      name: dashboard
+      name: dashapp
     port:
       targetPort: http-tcp
   status: {}
