@@ -38,7 +38,7 @@
 	<bean id="h2Server" class="org.h2.tools.Server"
 		factory-method="createWebServer" depends-on="h2db"
 		init-method="start" lazy-init="false">
-		<constructor-arg value="-web,-webPort,11111,-baseDir,./h2dbstore" />
+		<constructor-arg value="-web,-webAllowOthers,-webPort,11111,-baseDir,./h2dbstore" />
 	</bean>
 
 	<bean id="activemq" class="org.apache.activemq.camel.component.ActiveMQComponent">
