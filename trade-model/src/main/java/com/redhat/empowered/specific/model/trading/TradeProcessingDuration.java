@@ -63,11 +63,15 @@ public class TradeProcessingDuration extends IndicatorRecord {
 		this.tradeDate = tradeDate;
 	}
 	
+	//ovride to define gouping granularity
 	@Override
-	public BigDecimal frequencyGroupValue() {
+	public BigDecimal getFrequencyGroupValue() {
 		return this.value.setScale(0, RoundingMode.HALF_UP);
 	}
 	
-	
+	@Override
+	public String getIndicatorClass() {
+		return TradeProcessingDuration.class.getSimpleName();
+	}
 	
 }

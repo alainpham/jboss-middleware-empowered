@@ -4,12 +4,14 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.Date;
 
-public abstract class IndicatorRecord implements Serializable{
+public class IndicatorRecord implements Serializable{
 
 	private static final long serialVersionUID = 1L;
 	protected String uid;
 	protected BigDecimal value;
 	protected Date timestmp;
+	protected BigDecimal frequencyGroupValue;
+	protected String indicatorClass;
 	
 	public String getUid() {
 		return uid;
@@ -31,7 +33,21 @@ public abstract class IndicatorRecord implements Serializable{
 		this.timestmp = timestmp;
 	}
 	
-	//allows to do roundings to calculate frequency chart
-	public abstract BigDecimal frequencyGroupValue();
+	public BigDecimal getFrequencyGroupValue() {
+		return frequencyGroupValue;
+	}
+	public void setFrequencyGroupValue(BigDecimal frequencyGroupValue) {
+		this.frequencyGroupValue = frequencyGroupValue;
+	}
+	
+	public String getIndicatorClass() {
+		return indicatorClass;
+	}
+	public void setIndicatorClass(String indicatorClass) {
+		this.indicatorClass = indicatorClass;
+	}
+	
+	
+	
 	
 }

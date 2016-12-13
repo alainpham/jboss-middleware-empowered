@@ -25,6 +25,9 @@
 	<bean id="dataGenerator" class="com.redhat.empowered.tester.DataGenerator"
 		scope="singleton"></bean>
 
+	<bean id="genericObjectFactory" class="com.redhat.empowered.generic.model.GenericObjectFactory" />
+
+
 	<camelContext id="trade-service" xmlns="http://camel.apache.org/schema/spring">
 
 		<restConfiguration component="netty4-http" port="7124"
@@ -65,13 +68,20 @@
 		</route>
 		<route id="receiveMetricsGeneric">
 			<from id="receiveMetricsGenericStarter" uri="direct:receiveMetricsGeneric" />
+			<setProperty propertyName="originalBean">
+				<simple>${body}</simple>
+			</setProperty>
 			<marshal>
 				<serialization />
 			</marshal>
-			<multicast id="sendToStoreAndUpdate">
-				<to id="toUpdateStat" uri="activemq:queue:app.stats.updatestats" />
-				<to id="toStoreIndicator" uri="activemq:queue:app.stats.storeindicator" />
-			</multicast>
+			<to id="toStoreIndicator" uri="activemq:queue:app.stats.storeindicator" />
+			<setBody>
+				<method ref="genericObjectFactory" method="createIndicatorRecord(${property.originalBean})"></method>
+			</setBody>
+			<marshal>
+				<serialization />
+			</marshal>
+			<to id="toUpdateStat" uri="activemq:queue:app.stats.updatestats" />
 		</route>
 	</camelContext>
 </beans>

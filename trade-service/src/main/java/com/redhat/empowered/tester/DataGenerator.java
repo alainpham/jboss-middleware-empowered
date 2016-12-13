@@ -3,17 +3,11 @@ package com.redhat.empowered.tester;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.Date;
-import java.util.List;
-import java.util.Random;
 
 import org.apache.camel.EndpointInject;
 import org.apache.camel.ProducerTemplate;
-import org.apache.camel.util.FileUtil;
-import org.apache.commons.math3.random.GaussianRandomGenerator;
 import org.apache.commons.math3.random.RandomDataGenerator;
-import org.apache.commons.math3.random.RandomGenerator;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redhat.empowered.specific.model.trading.TradeProcessingDuration;
 
@@ -44,6 +38,7 @@ public class DataGenerator extends Thread{
     
     public void terminate() {
     	generatorThread.running = false;
+    	generatorThread = null;
     }
 	
     
@@ -81,6 +76,10 @@ public class DataGenerator extends Thread{
 	}
 	
 	public void startSim(String avg, String stdev){
+		if (generatorThread!=null){
+			System.out.println("Simulation already Running");
+			return;
+		}
 		generatorThread = new DataGenerator();
 		generatorThread.setProducer(this.producer);
 		generatorThread.running = true;

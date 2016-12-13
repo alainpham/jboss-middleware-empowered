@@ -9,9 +9,10 @@
 		</local-cache>
 		<local-cache name="metric">
 			<!-- <expiration lifespan="86400000" /> -->
-			<expiration max-idle="10000" />
-
+			<!-- <expiration max-idle="86400000" /> -->
+			<transaction mode="NON_XA" locking="PESSIMISTIC"/>
 		</local-cache>
 	</cache-container>
+	
 
 </infinispan>

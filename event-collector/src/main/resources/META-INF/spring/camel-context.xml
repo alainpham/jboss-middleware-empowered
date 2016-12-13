@@ -18,7 +18,7 @@
 	</bean>
 
 	<amq:broker useJmx="true" persistent="false">
-	
+
 		<amq:transportConnectors>
 			<amq:transportConnector uri="tcp://0.0.0.0:61616" />
 		</amq:transportConnectors>
@@ -38,7 +38,11 @@
 	<bean id="genericObjectFactory" class="com.redhat.empowered.generic.model.GenericObjectFactory" />
 
 	<bean id="triggerMetricCalculation"
-		class="com.redhat.empowered.generic.processors.TriggerMetricCalculation" />
+		class="com.redhat.empowered.generic.processors.TriggerMetricCalculation">
+		<constructor-arg ref="cacheManager" />
+		<constructor-arg value="metric" />
+		<constructor-arg ref="genericObjectFactory" />
+	</bean>
 
 	<camelContext id="event-collector" xmlns="http://camel.apache.org/schema/spring">
 
@@ -48,10 +52,27 @@
 		<restConfiguration component="netty4-http" port="7123"
 			bindingMode="json" enableCORS="true" />
 		<rest id="svc" path="/">
+			<get uri="clearCache/{cacheName}" id="clearCacheOp">
+				<to uri="direct:clearCacheOp" />
+			</get>
 			<get uri="{cacheName}/{uid}" id="queryOp">
 				<to uri="direct:queryOp" />
 			</get>
 		</rest>
+
+		<route id="clearCacheRoute">
+			<from uri="direct:clearCacheOp" />
+			<setHeader headerName="CamelInfinispanCacheName">
+				<simple>${headers.cacheName}</simple>
+			</setHeader>
+			<setHeader headerName="CamelInfinispanOperation">
+				<constant>CamelInfinispanOperationClear</constant>
+			</setHeader>
+			<to ref="datagrid" />
+			<setBody>
+				<simple>${headers.cacheName} cleared!</simple>
+			</setBody>
+		</route>
 
 		<!-- rest service to query events -->
 		<route id="queryOpRoute">
@@ -100,140 +121,27 @@
 			<unmarshal>
 				<serialization />
 			</unmarshal>
-			<log message="trying to process pojo of type ${body.class}"></log>
-			<!-- read existing -->
-			<to uri="direct:getMetricsFromCache"></to>
-			<!-- update metrics data -->
-			<process ref="triggerMetricCalculation"></process>
-			<!-- save data -->
-			<to uri="direct:saveMetricsToCache"></to>
-		</route>
-
-
-		<!-- retrive metric element from the cache -->
-		<!-- expects as input an IndicatorRecord object -->
-		<route id="getMetricsFromCache">
-
-			<from id="getMetricsFromCacheStarter" uri="direct:getMetricsFromCache"></from>
-
-			<setHeader headerName="CamelInfinispanCacheName">
-				<constant>metric</constant>
-			</setHeader>
+			<log message="trying to process pojo of type ${body.class} - ${body.value}"></log>
+	
 			<setHeader headerName="eventTimestmp">
 				<simple>${body.timestmp}</simple>
 			</setHeader>
-			<setHeader headerName="CamelInfinispanOperation">
-				<constant>CamelInfinispanOperationGet</constant>
+
+			<!-- hourly -->
+			<setHeader headerName="key">
+				<simple>${body.indicatorClass}.hourly.${date:header.eventTimestmp:yyyyMMddHH}</simple>
 			</setHeader>
-			<!-- key is composed as follows : className.granularity.timestamp -->
+			<process ref="triggerMetricCalculation"></process>
 
-			<!-- hourly data -->
-			<setHeader headerName="CamelInfinispanKey">
-				<simple>${body.class.name}.hourly.${date:header.eventTimestmp:yyyyMMddHH}</simple>
+			<setHeader headerName="key">
+				<simple>${body.indicatorClass}.daily.${date:header.eventTimestmp:yyyyMMdd}</simple>
 			</setHeader>
-			<to ref="datagrid" />
-			<choice>
-				<when>
-					<simple>${header.CamelInfinispanOperationResult} == null</simple>
-					<setHeader headerName="hourly">
-						<method bean="genericObjectFactory"
-							method="createStatisticsRecord(${header.CamelInfinispanKey})"></method>
-					</setHeader>
-				</when>
-				<otherwise>
-					<setHeader headerName="hourly">
-						<simple>${header.CamelInfinispanOperationResult}</simple>
-					</setHeader>
-				</otherwise>
-			</choice>
+			<process ref="triggerMetricCalculation"></process>
 
-
-
-			<!-- daily data -->
-			<setHeader headerName="CamelInfinispanKey">
-				<simple>${body.class.name}.daily.${date:header.eventTimestmp:yyyyMMdd}</simple>
+			<setHeader headerName="key">
+				<simple>${body.indicatorClass}.monthly.${date:header.eventTimestmp:yyyyMM}</simple>
 			</setHeader>
-			<to ref="datagrid" />
-			<choice>
-				<when>
-					<simple>${header.CamelInfinispanOperationResult} == null</simple>
-					<setHeader headerName="daily">
-						<method bean="genericObjectFactory"
-							method="createStatisticsRecord(${header.CamelInfinispanKey})"></method>
-					</setHeader>
-				</when>
-				<otherwise>
-					<setHeader headerName="daily">
-						<simple>${header.CamelInfinispanOperationResult}</simple>
-					</setHeader>
-				</otherwise>
-			</choice>
-
-			<!-- monthly data -->
-			<setHeader headerName="CamelInfinispanKey">
-				<simple>${body.class.name}.monthly.${date:header.eventTimestmp:yyyyMM}</simple>
-			</setHeader>
-			<to ref="datagrid" />
-			<choice>
-				<when>
-					<simple>${header.CamelInfinispanOperationResult} == null</simple>
-					<setHeader headerName="monthly">
-						<method bean="genericObjectFactory"
-							method="createStatisticsRecord(${header.CamelInfinispanKey})"></method>
-					</setHeader>
-				</when>
-				<otherwise>
-					<setHeader headerName="monthly">
-						<simple>${header.CamelInfinispanOperationResult}</simple>
-					</setHeader>
-				</otherwise>
-			</choice>
-		</route>
-
-
-		<!-- save metric element from the cache -->
-		<!-- expects as input an IndicatorRecord object -->
-		<route id="saveMetricsToCache">
-
-			<from id="saveMetricsToCacheStarter" uri="direct:saveMetricsToCache"></from>
-
-			<setHeader headerName="CamelInfinispanCacheName">
-				<constant>metric</constant>
-			</setHeader>
-			<setHeader headerName="CamelInfinispanOperation">
-				<constant>CamelInfinispanOperationPut</constant>
-			</setHeader>
-			<!-- key is composed as follows : className.granularity.timestamp -->
-
-			<!-- hourly data -->
-			<setHeader headerName="CamelInfinispanKey">
-				<simple>${header.hourly.key}</simple>
-			</setHeader>
-			<setHeader headerName="CamelInfinispanValue">
-				<simple>${header.hourly}</simple>
-			</setHeader>
-			<to ref="datagrid" />
-
-
-			<!-- daily data -->
-			<setHeader headerName="CamelInfinispanKey">
-				<simple>${header.daily.key}</simple>
-			</setHeader>
-			<setHeader headerName="CamelInfinispanValue">
-				<simple>${header.daily}</simple>
-			</setHeader>
-			<to ref="datagrid" />
-
-
-			<!-- monthly data -->
-			<setHeader headerName="CamelInfinispanKey">
-				<simple>${header.monthly.key}</simple>
-			</setHeader>
-			<setHeader headerName="CamelInfinispanValue">
-				<simple>${header.monthly}</simple>
-			</setHeader>
-			<to ref="datagrid" />
-
+			<process ref="triggerMetricCalculation"></process>
 		</route>
 
 

@@ -213,12 +213,12 @@ public class StatisticsRecord implements Serializable{
 		//calculate percentiles and slas
 		
 		//calculate frequency chart
-		Integer currentFrequency = frequencyData.get(indicatorRecord.frequencyGroupValue());
+		Integer currentFrequency = frequencyData.get(indicatorRecord.getFrequencyGroupValue());
 		if (currentFrequency!=null){
-			frequencyData.put(indicatorRecord.frequencyGroupValue(), currentFrequency+1);
+			frequencyData.put(indicatorRecord.getFrequencyGroupValue(), currentFrequency+1);
 		}else
 		{
-			frequencyData.put(indicatorRecord.frequencyGroupValue(), 1);
+			frequencyData.put(indicatorRecord.getFrequencyGroupValue(), 1);
 		}
 	}
 
