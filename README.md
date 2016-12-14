@@ -1,4 +1,4 @@
-# JBoss empowered Microservices for Service Level Management and Business Activity Monitoring
+# JBoss empowered Microservices for SLA management and Business Activity Monitoring
 
 This is an example of microservices for collecting/correlating business events with JBoss Fuse, JBoss Data Grid and soon to come JBoss Data Virtualization .
 It includes a real time dashboard using Patternfly to follow metrics and Service Level Agreements.
@@ -6,6 +6,8 @@ It includes a real time dashboard using Patternfly to follow metrics and Service
 Hopefully, it will give you an idea of what real time monitoring with "the microservice way" can bring to your Digital Transformation program.
 
 ## Project descriptions
+
+![overview](https://raw.githubusercontent.com/alainpham/jboss-middleware-empowered/master/architectureSchema.png)
 
 ##### event-collector
 
@@ -99,6 +101,8 @@ Otherwise if you don't want to use this option change the maven settings.xml fil
 ```
 http://dashboardURL/sim/sim/20/5
 ```
+
+![overview](https://raw.githubusercontent.com/alainpham/jboss-middleware-empowered/master/screenshot.png)
 
 ## Extending this project
 
