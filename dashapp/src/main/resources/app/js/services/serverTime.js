@@ -7,7 +7,7 @@ function serverTime($http,$rootScope,$interval,globalVars){
 
 	var service = {};
 	//init var at start of program
-	$rootScope.currentServerTime = "19700101000000.000"
+	$rootScope.currentServerTime = "19700101000000.000";
 
 	service.getTimeFromServer = function (callback){
 
