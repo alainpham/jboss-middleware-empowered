@@ -220,7 +220,6 @@
 		<module>dashapp</module>
 		<module>event-collector</module>
 		<module>trade-service</module>
-		<module>dashboard</module>
 	</modules>
 
 </project>
