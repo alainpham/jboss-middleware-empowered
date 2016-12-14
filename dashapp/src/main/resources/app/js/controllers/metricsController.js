@@ -6,7 +6,7 @@ app.controller('metricsController',metricsController);
 
 
 
-function metricsController($scope,$interval,metrics,globalVars){
+function metricsController($rootScope,$scope,$interval,metrics,globalVars){
 
 	//members declaration
 	this.dailySummaryBarChart = null;
@@ -14,12 +14,12 @@ function metricsController($scope,$interval,metrics,globalVars){
 	this.data = null;
 
 	//utility function
-	this.yyyymmdd = function(dateIn) {
-		var yyyy = dateIn.getFullYear();
-		var mm = dateIn.getMonth()+1; // getMonth() is zero-based
-		var dd  = dateIn.getDate();
-		return String(10000*yyyy + 100*mm + dd); // Leading zeros for mm and dd
-	}
+//	this.yyyymmdd = function(dateIn) {
+//		var yyyy = dateIn.getFullYear();
+//		var mm = dateIn.getMonth()+1; // getMonth() is zero-based
+//		var dd  = dateIn.getDate();
+//		return String(10000*yyyy + 100*mm + dd); // Leading zeros for mm and dd
+//	}
 
 	//init function
 	this.init = function(){
@@ -56,7 +56,7 @@ function metricsController($scope,$interval,metrics,globalVars){
 		metrics.get(
 				globalVars.businessObject,
 				'daily',
-				this.yyyymmdd(new Date()),
+				$rootScope.currentServerTime.substring(0,8),
 				function(data){
 					
 					if (data.data == ""){

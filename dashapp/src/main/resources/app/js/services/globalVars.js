@@ -12,6 +12,7 @@ function globalVars(){
 	service.updateIntervalMs = 1500;
 	service.apiUrl= "";
 	console.log("created globalVars");
+	
 	return service;
 	
 }

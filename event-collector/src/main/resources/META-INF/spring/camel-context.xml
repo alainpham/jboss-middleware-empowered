@@ -32,13 +32,14 @@
 	<!-- Embedded data base -->
 	<bean id="h2db" class="org.h2.tools.Server" factory-method="createTcpServer"
 		init-method="start" destroy-method="stop">
-		<constructor-arg value="-tcp,-tcpAllowOthers,-tcpPort,8643,-baseDir,./h2dbstore" />
+		<constructor-arg
+			value="-tcp,-tcpAllowOthers,-tcpPort,8643,-baseDir,./h2dbstore" />
 	</bean>
-	
-	<bean id="h2Server" class="org.h2.tools.Server"
-		factory-method="createWebServer" depends-on="h2db"
-		init-method="start" lazy-init="false">
-		<constructor-arg value="-web,-webAllowOthers,-webPort,11111,-baseDir,./h2dbstore" />
+
+	<bean id="h2Server" class="org.h2.tools.Server" factory-method="createWebServer"
+		depends-on="h2db" init-method="start" lazy-init="false">
+		<constructor-arg
+			value="-web,-webAllowOthers,-webPort,11111,-baseDir,./h2dbstore" />
 	</bean>
 
 	<bean id="activemq" class="org.apache.activemq.camel.component.ActiveMQComponent">
@@ -64,6 +65,9 @@
 		<restConfiguration component="netty4-http" port="7123"
 			bindingMode="json" enableCORS="true" />
 		<rest id="svc" path="/">
+			<get uri="serverTime" id="serverTimeOp">
+				<to uri="direct:serverTimeOp" />
+			</get>
 			<get uri="clearCache/{cacheName}" id="clearCacheOp">
 				<to uri="direct:clearCacheOp" />
 			</get>
@@ -71,6 +75,13 @@
 				<to uri="direct:queryOp" />
 			</get>
 		</rest>
+
+		<route id="serverTime">
+			<from uri="direct:serverTimeOp" />
+			<setBody>
+				<simple>${date:now:yyyyMMddHHmmss.SSS}</simple>
+			</setBody>
+		</route>
 
 		<route id="clearCacheRoute">
 			<from uri="direct:clearCacheOp" />
@@ -104,8 +115,6 @@
 			</setBody>
 		</route>
 
-
-
 		<!-- calculating metrics -->
 		<route id="calculateMetrics">
 			<from id="calculateMetricsStarter"
@@ -119,7 +128,6 @@
 				<simple>${body.timestmp}</simple>
 			</setHeader>
 
-			<!-- hourly -->
 			<setHeader headerName="key">
 				<simple>${body.indicatorClass}.hourly.${date:header.eventTimestmp:yyyyMMddHH}</simple>
 			</setHeader>
@@ -135,7 +143,6 @@
 			</setHeader>
 			<process ref="triggerMetricCalculation"></process>
 		</route>
-
 
 	</camelContext>
 </beans>

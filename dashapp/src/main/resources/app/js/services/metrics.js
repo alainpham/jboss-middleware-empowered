@@ -6,10 +6,11 @@ app.factory('metrics', metrics);
 function metrics($http,globalVars){
 	
 	var service = {};
-
+	service.apiRoot = globalVars.apiUrl + 'api/metric/';
+	
 	service.get = function (businessObject,frequency,id,callback){
 
-		var callurl = globalVars.apiUrl + 'api/metric/' + businessObject + '.' + frequency + '.' + id;
+		var callurl = this.apiRoot + businessObject + '.' + frequency + '.' + id;
 		
 		var httpMethod = {
 				method: 'GET',
@@ -19,7 +20,7 @@ function metrics($http,globalVars){
 		$http(httpMethod).then(callback);
 	}
 
-	console.log("created metrics");
+	console.log("created metrics service");
 	
 	return service;
 }
