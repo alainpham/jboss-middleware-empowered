@@ -5,7 +5,7 @@
   <parent>
     <groupId>com.redhat.empowered</groupId>
     <artifactId>microservices</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0-SNAPSHOT</version>
   </parent>
   <artifactId>fis-spring-archetype</artifactId>
   <version>6.3.0</version>
