@@ -172,11 +172,11 @@ public class StatisticsRecord implements Serializable{
 		
 		//calculate average		
 		if (this.count == 0) {
-			newAvg=indicatorRecord.getValue();
-			this.min = indicatorRecord.getValue();
-			this.max = indicatorRecord.getValue();
+			newAvg=indicatorRecord.getIndicatorValue();
+			this.min = indicatorRecord.getIndicatorValue();
+			this.max = indicatorRecord.getIndicatorValue();
 		}else{
-			newAvg = ((this.avg.multiply(bigDecimalcount)).add(indicatorRecord.getValue())).divide(bigDecimalNewCount,MathContext.DECIMAL64);
+			newAvg = ((this.avg.multiply(bigDecimalcount)).add(indicatorRecord.getIndicatorValue())).divide(bigDecimalNewCount,MathContext.DECIMAL64);
 		}
 		// calculate standard deviation		
 		if (this.count >= 1) {
@@ -190,7 +190,7 @@ public class StatisticsRecord implements Serializable{
 			BigDecimal n_minus_2_sn1 = n_minus_2.multiply(this.stdev);
 			BigDecimal n_minus_1 =  bigDecimalNewCount.subtract(BigDecimal.valueOf(1));
 			BigDecimal xn1_minus_xn_square = this.avg.subtract(newAvg).pow(2);
-			BigDecimal xn_minus_xn_square = indicatorRecord.getValue().subtract(newAvg).pow(2);
+			BigDecimal xn_minus_xn_square = indicatorRecord.getIndicatorValue().subtract(newAvg).pow(2);
 			
 			newStdev = n_minus_2_sn1.add(n_minus_1.multiply(xn1_minus_xn_square)).add(xn_minus_xn_square).divide(n_minus_1,MathContext.DECIMAL64);
 			
@@ -199,11 +199,11 @@ public class StatisticsRecord implements Serializable{
 		
 		
 		//calculate min/max
-		if (this.max.compareTo(indicatorRecord.getValue()) < 0 ){
-			this.max = indicatorRecord.getValue();
+		if (this.max.compareTo(indicatorRecord.getIndicatorValue()) < 0 ){
+			this.max = indicatorRecord.getIndicatorValue();
 		}
-		if (this.min.compareTo(indicatorRecord.getValue()) > 0 ){
-			this.min = indicatorRecord.getValue();
+		if (this.min.compareTo(indicatorRecord.getIndicatorValue()) > 0 ){
+			this.min = indicatorRecord.getIndicatorValue();
 		}
 		
 		this.count = newCount;

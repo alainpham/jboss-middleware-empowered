@@ -22,6 +22,20 @@
 		<property name="password" value="${brokerPwd}" />
 	</bean>
 
+	<!-- ########################################################### -->
+	<!-- Database configs -->
+	<!-- ########################################################### -->
+	<bean class="org.apache.commons.dbcp.BasicDataSource"
+		destroy-method="close" id="dataSource">
+		<property name="driverClassName" value="${dbDriver}" />
+		<property name="url" value="${dbUrl}" />
+		<property name="username" value="${dbUser}" />
+		<property name="password" value="${dbPwd}" />
+	</bean>
+	<bean class="org.apache.camel.component.sql.SqlComponent" id="sql">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
 	<bean id="dataGenerator" class="com.redhat.empowered.tester.DataGenerator"
 		scope="singleton"></bean>
 
@@ -84,22 +98,14 @@
 		<!-- store the raw POJO -->
 		<route id="storeIndicatorRoute">
 			<from id="storeIndicatorStarter" uri="direct:storeIndicator" />
+			<setHeader headerName="eventTimestmp">
+				<simple>${body.timestmp}</simple>
+			</setHeader>
 			<log id="logBody" message="trying to store pojo of type ${body.class}" />
-<!-- 			<setHeader headerName="CamelInfinispanKey">
-				<simple>${body.uid}</simple>
-			</setHeader>
-			<setHeader headerName="CamelInfinispanValue">
-				<simple>${body}</simple>
-			</setHeader>
-			<setHeader headerName="CamelInfinispanCacheName">
-				<constant>event</constant>
-			</setHeader>
-			<setHeader headerName="CamelInfinispanOperation">
-				<constant>CamelInfinispanOperationPut</constant>
-			</setHeader> -->
+			<to uri="sql:classpath:sql/insertIndicatorRecord.sql" />
 		</route>
-		
-		
+
+
 
 	</camelContext>
 </beans>

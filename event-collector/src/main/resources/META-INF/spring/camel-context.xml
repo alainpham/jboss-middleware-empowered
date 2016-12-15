@@ -48,6 +48,20 @@
 		<property name="password" value="${brokerPwd}" />
 	</bean>
 
+	<!-- ########################################################### -->
+	<!-- Database configs -->
+	<!-- ########################################################### -->
+	<bean class="org.apache.commons.dbcp.BasicDataSource"
+		destroy-method="close" id="dataSource">
+		<property name="driverClassName" value="${dbDriver}" />
+		<property name="url" value="${dbUrl}" />
+		<property name="username" value="${dbUser}" />
+		<property name="password" value="${dbPwd}" />
+	</bean>
+	<bean class="org.apache.camel.component.sql.SqlComponent" id="sql">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
 	<bean id="genericObjectFactory" class="com.redhat.empowered.generic.model.GenericObjectFactory" />
 
 	<bean id="triggerMetricCalculation"
@@ -122,7 +136,8 @@
 			<unmarshal>
 				<serialization />
 			</unmarshal>
-			<log message="trying to process pojo of type ${body.class} - ${body.value}"></log>
+			<log
+				message="trying to process pojo of type ${body.class} - ${body.indicatorValue}"></log>
 
 			<setHeader headerName="eventTimestmp">
 				<simple>${body.timestmp}</simple>
@@ -142,6 +157,13 @@
 				<simple>${body.indicatorClass}.monthly.${date:header.eventTimestmp:yyyyMM}</simple>
 			</setHeader>
 			<process ref="triggerMetricCalculation"></process>
+		</route>
+		
+		<!-- Init Database -->
+		<route id="initDBRoute" startupOrder="1">
+			<from id="initDBStarter" uri="timer:initDB?repeatCount=1&amp;delay=-1" />
+			<to uri="sql:classpath:sql/createIndicatorRecord.sql" />
+			<log message="DB initialized!"></log>
 		</route>
 
 	</camelContext>

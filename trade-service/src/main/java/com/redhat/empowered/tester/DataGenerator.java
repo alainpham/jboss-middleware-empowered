@@ -99,7 +99,7 @@ public class DataGenerator extends Thread{
 	            	TradeProcessingDuration tradeProcessingDuration = new TradeProcessingDuration();
 	            	tradeProcessingDuration.setUid("" + System.currentTimeMillis());
 	            	tradeProcessingDuration.setTimestmp(new Date());
-	            	tradeProcessingDuration.setValue(value);
+	            	tradeProcessingDuration.setIndicatorValue(value);
 	            	producer.sendBody(mapper.writeValueAsString(tradeProcessingDuration));
 	            	Thread.sleep(dataGenerator.nextLong(200, 1000));
 	            } catch (Exception e) {

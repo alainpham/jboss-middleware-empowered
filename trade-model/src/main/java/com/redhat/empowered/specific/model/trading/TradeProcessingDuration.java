@@ -66,7 +66,7 @@ public class TradeProcessingDuration extends IndicatorRecord {
 	//ovride to define gouping granularity
 	@Override
 	public BigDecimal getFrequencyGroupValue() {
-		return this.value.setScale(0, RoundingMode.HALF_UP);
+		return this.indicatorValue.setScale(0, RoundingMode.HALF_UP);
 	}
 	
 	@Override

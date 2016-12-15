@@ -8,7 +8,7 @@ public class IndicatorRecord implements Serializable{
 
 	private static final long serialVersionUID = 1L;
 	protected String uid;
-	protected BigDecimal value;
+	protected BigDecimal indicatorValue;
 	protected Date timestmp;
 	protected BigDecimal frequencyGroupValue;
 	protected String indicatorClass;
@@ -19,11 +19,13 @@ public class IndicatorRecord implements Serializable{
 	public void setUid(String uid) {
 		this.uid = uid;
 	}
-	public BigDecimal getValue() {
-		return value;
+	
+	
+	public BigDecimal getIndicatorValue() {
+		return indicatorValue;
 	}
-	public void setValue(BigDecimal value) {
-		this.value = value;
+	public void setIndicatorValue(BigDecimal indicatorValue) {
+		this.indicatorValue = indicatorValue;
 	}
 	public Date getTimestmp() {
 		return timestmp;
