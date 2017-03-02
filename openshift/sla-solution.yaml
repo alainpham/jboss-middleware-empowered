@@ -110,7 +110,7 @@ objects:
            - containerPort: 7123
              name: rest-svc
              protocol: TCP
-           - containerPort: 61616
+           - containerPort: 61670
              name: amq-svc
              protocol: TCP
            - containerPort: 8643
@@ -174,9 +174,9 @@ objects:
       protocol: TCP
       targetPort: 7123
     - name: amq-svc-tcp
-      port: 61616
+      port: 61670
       protocol: TCP
-      targetPort: 61616
+      targetPort: 61670
     - name: h2db-tcp
       port: 8643
       protocol: TCP
