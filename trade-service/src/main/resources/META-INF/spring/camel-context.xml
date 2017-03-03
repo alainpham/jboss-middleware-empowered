@@ -102,9 +102,8 @@
 				<simple>${body.timestmp}</simple>
 			</setHeader>
 			<log id="logBody" message="trying to store pojo of type ${body.class}" />
-			<to uri="sql:classpath:sql/insertIndicatorRecord.sql" />
-		</route>
-
+<!-- 			<to uri="sql:classpath:sql/insertIndicatorRecord.sql" />
+ -->		</route>
 
 
 	</camelContext>

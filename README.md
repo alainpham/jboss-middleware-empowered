@@ -109,3 +109,17 @@ http://dashboardURL/sim/sim/20/5
 To create a project or add a module to this using a predefined archetype similar to the existing projects : 
 mvn archetype:generate -DarchetypeGroupId=com.redhat.empowered -DarchetypeArtifactId=fis-spring-archetype -DarchetypeVersion=6.3.0 -DgroupId=<YourGroup> -DartifactId=<YourArtifactID>
 
+
+
+
+
+
+Install on Fuse Karaf : 
+features:install camel-infinispan jdbc camel-sql camel-netty4-http camel-jackson camel-jsonpath
+osgi:install -s mvn:com.h2database/h2/1.4.193
+osgi:install -s mvn:org.apache.commons/commons-math3/3.6.1
+osgi:install -s mvn:com.redhat.empowered/generic-model/1.2.0-SNAPSHOT
+osgi:install -s mvn:com.redhat.empowered/trade-model/1.2.0-SNAPSHOT
+osgi:install -s mvn:com.redhat.empowered/event-collector/1.2.0-SNAPSHOT
+osgi:install -s mvn:com.redhat.empowered/trade-service/1.2.0-SNAPSHOT
+osgi:install -s mvn:com.redhat.empowered/dashapp/1.2.0-SNAPSHOT
