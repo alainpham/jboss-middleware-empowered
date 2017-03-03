@@ -114,7 +114,7 @@ mvn archetype:generate -DarchetypeGroupId=com.redhat.empowered -DarchetypeArtifa
 
 
 
-Install on Fuse Karaf : 
+## Install on Fuse Karaf : 
 ```
 features:install camel-infinispan jdbc camel-sql camel-netty4-http camel-jackson camel-jsonpath
 osgi:install -s mvn:com.h2database/h2/1.4.193
