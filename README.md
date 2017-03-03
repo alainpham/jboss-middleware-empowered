@@ -115,6 +115,7 @@ mvn archetype:generate -DarchetypeGroupId=com.redhat.empowered -DarchetypeArtifa
 
 
 Install on Fuse Karaf : 
+```
 features:install camel-infinispan jdbc camel-sql camel-netty4-http camel-jackson camel-jsonpath
 osgi:install -s mvn:com.h2database/h2/1.4.193
 osgi:install -s mvn:org.apache.commons/commons-math3/3.6.1
@@ -123,3 +124,4 @@ osgi:install -s mvn:com.redhat.empowered/trade-model/1.2.0-SNAPSHOT
 osgi:install -s mvn:com.redhat.empowered/event-collector/1.2.0-SNAPSHOT
 osgi:install -s mvn:com.redhat.empowered/trade-service/1.2.0-SNAPSHOT
 osgi:install -s mvn:com.redhat.empowered/dashapp/1.2.0-SNAPSHOT
+```
