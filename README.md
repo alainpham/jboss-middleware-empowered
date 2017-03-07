@@ -1,3 +1,8 @@
+/!\ This project has been moved to the following repo : 
+
+    https://github.com/alainpham/microbam
+
+
 # JBoss empowered Microservices for SLA management and Business Activity Monitoring
 
 This is an example of microservices for collecting/correlating business events with JBoss Fuse, JBoss Data Grid and soon to come JBoss Data Virtualization .
